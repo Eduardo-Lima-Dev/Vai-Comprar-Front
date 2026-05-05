@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+  Tokens from insomnia/DESIGN.md (YAML) + prose gradient layered on body.
+*/
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Noto Serif', ui-serif, Georgia, serif;
+
+  --color-background: #16130e;
+  --color-on-background: #e9e1d9;
+  --color-surface: #16130e;
+  --color-surface-bright: #3c3933;
+  --color-surface-container-lowest: #100e09;
+  --color-surface-container-low: #1e1b16;
+  --color-surface-container: #221f1a;
+  --color-surface-container-high: #2d2a24;
+  --color-surface-container-highest: #38342e;
+  --color-surface-variant: #38342e;
+  --color-on-surface: #e9e1d9;
+  --color-on-surface-variant: #d0c5b4;
+
+  --color-outline: #999080;
+  --color-outline-variant: #4d4639;
+
+  --color-primary: #f3d186;
+  --color-on-primary: #3f2e00;
+  --color-primary-container: #d6b56d;
+  --color-on-primary-container: #5d4606;
+  --color-gold-accent: #d6b56d;
+
+  --color-secondary: #c6c6cd;
+  --color-on-secondary: #2e3036;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+
+  --spacing-margin-edge: 1.5rem;
+  --spacing-gutter: 1.25rem;
+
+  --radius-sm: 0.25rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
+@layer base {
+  :root {
+    --vc-card-border: rgb(214 181 109 / 0.1);
+    --vc-overlay: rgb(22 19 14 / 0.65);
+    --vc-progress-track: rgb(61 56 51);
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    color: var(--color-on-background);
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(120% 90% at 50% -20%, rgb(228 194 121 / 0.06), transparent 52%),
+      linear-gradient(180deg, #07080c 0%, #121212 45%, #16130e 100%);
+    background-attachment: fixed;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.tracking-label {
+  letter-spacing: 0.1em;
+}
+
+/* react-toastify alignment with DESIGN.md */
+:root {
+  --toastify-color-dark: var(--color-surface-container-high);
+  --toastify-text-color-dark: var(--color-on-surface);
+  --toastify-color-progress-dark: var(--color-primary-container);
+}
