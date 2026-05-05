@@ -45,8 +45,9 @@ export function LoginPage() {
   )
 
   return (
-    <main className="flex min-h-screen flex-col px-[var(--spacing-margin-edge)] pb-10 pt-10">
-      <SurfaceCard className="mx-auto w-full max-w-md" padding="lg">
+    <main className="flex min-h-[100dvh] flex-col px-[var(--spacing-margin-edge)] pb-8">
+      <div className="flex w-full flex-1 flex-col items-center justify-center pb-6 pt-[max(2.5rem,min(14vh,7rem))] sm:pb-10 sm:pt-[min(18vh,8.5rem)]">
+        <SurfaceCard className="w-full max-w-md" padding="lg">
         <BrandLogo embedded />
 
         <div className="mb-10 text-center">
@@ -112,9 +113,10 @@ export function LoginPage() {
             Criar uma conta
           </Link>
         </div>
-      </SurfaceCard>
+        </SurfaceCard>
+      </div>
 
-      <footer className="mt-auto px-6 pt-16 text-center">
+      <footer className="shrink-0 px-6 pb-8 pt-4 text-center">
         <p className="font-display text-[0.8rem] italic leading-relaxed text-on-surface-variant">Compras organizadas, casa em sintonia.</p>
       </footer>
     </main>

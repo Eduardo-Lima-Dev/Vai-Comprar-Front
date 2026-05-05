@@ -53,8 +53,9 @@ export function RegisterPage() {
   )
 
   return (
-    <main className="flex min-h-screen flex-col px-[var(--spacing-margin-edge)] pb-10 pt-10">
-      <SurfaceCard className="mx-auto w-full max-w-md" padding="lg">
+    <main className="flex min-h-[100dvh] flex-col px-[var(--spacing-margin-edge)] pb-8">
+      <div className="flex w-full flex-1 flex-col items-center justify-center pb-10 pt-[max(2.5rem,min(14vh,7rem))] sm:pt-[min(18vh,8.5rem)]">
+        <SurfaceCard className="w-full max-w-md" padding="lg">
         <BrandLogo embedded />
 
         <div className="mb-8 text-center">
@@ -130,6 +131,7 @@ export function RegisterPage() {
           </Link>
         </p>
       </SurfaceCard>
+      </div>
     </main>
   )
 }
