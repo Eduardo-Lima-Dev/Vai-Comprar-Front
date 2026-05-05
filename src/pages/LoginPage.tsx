@@ -46,11 +46,9 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col px-[var(--spacing-margin-edge)] pb-10 pt-10">
-      <div className="mb-10 flex flex-col items-center text-center">
-        <BrandLogo hero />
-      </div>
-
       <SurfaceCard className="mx-auto w-full max-w-md" padding="lg">
+        <BrandLogo embedded />
+
         <div className="mb-10 text-center">
           <p className="font-display text-2xl font-medium leading-snug tracking-tight text-on-surface">Organize suas compras em grupo</p>
           <p className="mt-4 font-sans text-sm leading-relaxed text-on-surface-variant">
