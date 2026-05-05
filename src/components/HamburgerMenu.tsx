@@ -8,8 +8,8 @@ import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 type HamburgerMenuProps = {
   roomSlug?: string
   onArchiveRoom?: () => void
-  /** Default: gold hamburger icon. `menu-label` matches mobile mock (“menu”). */
-  trigger?: 'icon' | 'menu-label' | 'gear'
+  /** Padrão: ícone hambúrguer. `gear` para atalho de configurações na sala. */
+  trigger?: 'icon' | 'gear'
 }
 
 function MenuRowIcon({ children, className }: { children: ReactNode; className?: string }) {
@@ -93,17 +93,11 @@ export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: Ham
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={clsx(
-          trigger === 'menu-label'
-            ? 'rounded-md px-1 py-1 font-sans text-sm font-semibold uppercase tracking-[0.2em] text-primary underline-offset-4 hover:text-primary-container hover:underline'
-            : 'inline-flex h-10 min-w-10 items-center justify-center rounded-lg border bg-surface-container-low/70 text-primary backdrop-blur-sm transition hover:bg-surface-container-high',
-        )}
-        style={trigger !== 'menu-label' ? { borderColor: 'var(--vc-card-border)' } : undefined}
+        className="inline-flex h-10 min-w-10 items-center justify-center rounded-lg border bg-surface-container-low/70 text-primary backdrop-blur-sm transition hover:bg-surface-container-high"
+        style={{ borderColor: 'var(--vc-card-border)' }}
         aria-label="Abrir menu"
       >
-        {trigger === 'menu-label' ? (
-          'menu'
-        ) : trigger === 'gear' ? (
+        {trigger === 'gear' ? (
           <svg viewBox="0 0 24 24" className="h-[1.35rem] w-[1.35rem] fill-none stroke-current" strokeWidth="1.7">
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M17.36 6.36l1.42-1.42" strokeLinecap="round" />
@@ -125,8 +119,7 @@ export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: Ham
             className="absolute right-0 top-0 flex h-full w-[min(90vw,20rem)] flex-col border-l shadow-2xl"
             style={{ borderColor: 'var(--vc-card-border)', backgroundColor: 'rgba(34,31,26,0.97)' }}
           >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--vc-card-border)' }}>
-              <h2 className="font-display text-lg tracking-tight text-on-surface">Menu</h2>
+            <div className="flex shrink-0 justify-end border-b px-4 py-3" style={{ borderColor: 'var(--vc-card-border)' }}>
               <button
                 type="button"
                 onClick={closeMenu}

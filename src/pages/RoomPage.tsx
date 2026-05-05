@@ -5,9 +5,9 @@ import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
 import * as participantsApi from '../api/participants'
 import * as roomsApi from '../api/rooms'
-import { useAuth } from '../auth/AuthContext'
 import { HamburgerMenu } from '../components/HamburgerMenu'
 import { Chip } from '../components/design/Chip'
+import { ConfirmDialog } from '../components/design/ConfirmDialog'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
@@ -21,6 +21,9 @@ type RoomState = {
   items: Item[]
 }
 
+/** Quantidade de pendentes exibidos antes de pedir “Mostrar mais”. */
+const PENDING_PAGE_SIZE = 10
+
 function initialsFromName(name: string, maxLetters = 2) {
   return name
     .split(/\s+/)
@@ -29,39 +32,47 @@ function initialsFromName(name: string, maxLetters = 2) {
     .join('')
 }
 
-const tagByCategory: Record<ItemCategory, string> = {
-  COMIDA: 'Despensa',
-  LIMPEZA: 'Limpeza',
-  HIGIENE: 'Higiene',
-  BEBIDAS: 'Bebidas',
-  DIA_A_DIA: 'Dia a dia',
-  OUTROS: 'Essencial',
-}
-
 function categoryGlyph(category: ItemCategory) {
+  const cls = 'h-7 w-7 shrink-0 stroke-current'
+  const sw = 1.45
   switch (category) {
     case 'COMIDA':
       return (
-        <svg viewBox="0 0 24 24" className="h-7 w-7" stroke="currentColor" fill="none" strokeWidth={1.4}>
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
           <path d="M5 21h13M7 21V13h6v8m-9 8V17h13v4m-13-11V7h13v10" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
     case 'BEBIDAS':
       return (
-        <svg viewBox="0 0 24 24" className="h-7 w-7" stroke="currentColor" fill="none" strokeWidth={1.4}>
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
           <path d="M11 21V14M9 21h6m-10-14h14l-.7 14H12.7z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
     case 'LIMPEZA':
       return (
-        <svg viewBox="0 0 24 24" className="h-7 w-7" stroke="currentColor" fill="none" strokeWidth={1.4}>
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
           <path d="M17 21H7v-9l10-11v15Z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
-    default:
+    case 'HIGIENE':
       return (
-        <svg viewBox="0 0 24 24" className="h-7 w-7" stroke="currentColor" fill="none" strokeWidth={1.4}>
-          <rect x="5" y="5" width="14" height="14" rx="2" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
+          <path d="M12 3v4M9 7h6l-1 14H10L9 7z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 11h8M8 15h8" strokeLinecap="round" />
+        </svg>
+      )
+    case 'DIA_A_DIA':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'OUTROS':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="none" strokeWidth={sw}>
+          <path d="M8 8h12v12H8z" strokeLinejoin="round" />
+          <path d="M4 16V4h12" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
   }
@@ -70,14 +81,16 @@ function categoryGlyph(category: ItemCategory) {
 export function RoomPage() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [state, setState] = useState<RoomState>({ room: null, items: [] })
   const [newParticipantName, setNewParticipantName] = useState('')
   const [search, setSearch] = useState('')
-  const [filterCategory, setFilterCategory] = useState<ItemCategory | null>('COMIDA')
+  const [filterCategory, setFilterCategory] = useState<ItemCategory | null>(null)
   const [isDateSheetOpen, setIsDateSheetOpen] = useState(false)
   const [plannedDraft, setPlannedDraft] = useState('')
   const nativeDateModalRef = useRef<HTMLInputElement>(null)
+  const [pendingVisibleCount, setPendingVisibleCount] = useState(PENDING_PAGE_SIZE)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const pendingItems = useMemo(() => state.items.filter((item) => item.status !== 'PURCHASED'), [state.items])
   const purchasedItems = useMemo(() => state.items.filter((item) => item.status === 'PURCHASED'), [state.items])
@@ -87,7 +100,7 @@ export function RoomPage() {
     return err instanceof Error ? err.message : fallback
   }
 
-  async function loadRoomData(notify = false) {
+  async function loadRoomData() {
     if (!slug) return
     try {
       const [room, items] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
@@ -96,15 +109,14 @@ export function RoomPage() {
         room: { ...room, participants: Array.isArray(room.participants) ? room.participants : [] },
         items: Array.isArray(items) ? items : [],
       })
-      if (notify) toast.success('Sala carregada com sucesso.')
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao carregar sala.'))
     }
   }
 
   useEffect(() => {
-    void loadRoomData(true)
-    const interval = setInterval(() => void loadRoomData(false), 10000)
+    void loadRoomData()
+    const interval = setInterval(() => void loadRoomData(), 10000)
     return () => clearInterval(interval)
   }, [slug])
 
@@ -152,15 +164,18 @@ export function RoomPage() {
     }
   }
 
-  async function handleDeleteItem(itemId: string) {
-    if (!slug) return
-    if (!window.confirm('Tem certeza que deseja remover este item?')) return
+  async function confirmDeleteItem() {
+    if (!slug || !deleteTarget) return
+    setDeleteBusy(true)
     try {
-      await itemsApi.deleteItem(slug, itemId)
+      await itemsApi.deleteItem(slug, deleteTarget.id)
       toast.success('Item removido com sucesso.')
+      setDeleteTarget(null)
       await loadRoomData()
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao remover item.'))
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -188,12 +203,6 @@ export function RoomPage() {
     }
   }
 
-  const avatarInitial = useMemo(() => {
-    const base = user?.name || user?.email || ''
-    const letters = initialsFromName(base.trim() ? base : '?', 2)
-    return letters || '?'
-  }, [user?.email, user?.name])
-
   const filteredPending = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return pendingItems.filter((item) => {
@@ -204,6 +213,18 @@ export function RoomPage() {
     })
   }, [pendingItems, filterCategory, search])
 
+  useEffect(() => {
+    setPendingVisibleCount(PENDING_PAGE_SIZE)
+  }, [filterCategory, search, slug])
+
+  const visiblePendingPage = useMemo(
+    () => filteredPending.slice(0, pendingVisibleCount),
+    [filteredPending, pendingVisibleCount],
+  )
+  const pendingTotal = filteredPending.length
+  const hasMorePending = pendingTotal > pendingVisibleCount
+  const nextChunk = Math.min(PENDING_PAGE_SIZE, pendingTotal - pendingVisibleCount)
+
   const participantRing = participants.slice(0, 6)
 
   const displayPlannedFormatted = plannedDraft ? formatPlannedDateRaw(parseDateInputToIso(plannedDraft)) : ''
@@ -212,21 +233,8 @@ export function RoomPage() {
     <main className="mx-auto w-full max-w-lg px-[var(--spacing-margin-edge)] pb-[13rem] pt-6 md:max-w-xl">
       {/* Top chrome */}
       <header className="mb-10 flex flex-col gap-10">
-        <div className="flex items-start justify-between gap-3">
-          <HamburgerMenu trigger="menu-label" roomSlug={slug} onArchiveRoom={handleArchiveRoom} />
-          <p className="font-display mt-2 text-xl italic tracking-[0.14em] text-primary">Vai Comprar</p>
-          <button
-            type="button"
-            onClick={() => navigate('/profile')}
-            className="mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold uppercase text-on-primary"
-            style={{
-              borderColor: 'var(--vc-card-border)',
-              backgroundImage: 'linear-gradient(140deg,var(--color-primary-container),var(--color-primary))',
-            }}
-            aria-label="Abrir perfil"
-          >
-            {avatarInitial.slice(0, 2).toUpperCase()}
-          </button>
+        <div className="flex items-start justify-end">
+          <HamburgerMenu roomSlug={slug} onArchiveRoom={handleArchiveRoom} />
         </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-10" style={{ borderColor: 'var(--vc-card-border)' }}>
@@ -321,7 +329,14 @@ export function RoomPage() {
 
         {/* Pending list */}
         <div className="space-y-4">
-          <h2 className="font-display text-lg text-on-background">Pendentes</h2>
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 className="font-display text-lg text-on-background">Pendentes</h2>
+            {pendingTotal > 0 ? (
+              <p className="font-sans text-xs text-on-surface-variant">
+                Mostrando {visiblePendingPage.length} de {pendingTotal}
+              </p>
+            ) : null}
+          </div>
 
           {!filteredPending.length ? (
             <SurfaceCard padding="lg" className="text-center font-sans text-sm text-on-surface-variant">
@@ -329,37 +344,47 @@ export function RoomPage() {
             </SurfaceCard>
           ) : null}
 
-          {filteredPending.map((item) => (
-            <article key={item.id} className="flex gap-5 rounded-xl border px-5 py-4 shadow-xl" style={{ borderColor: 'var(--vc-card-border)', background: 'rgba(39,37,34,0.78)' }}>
+          {visiblePendingPage.map((item) => (
+            <article
+              key={item.id}
+              className="flex items-center gap-3 rounded-xl border px-4 py-4 sm:gap-4 sm:px-5"
+              style={{ borderColor: 'var(--vc-card-border)', background: 'rgba(39,37,34,0.78)' }}
+            >
               <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border bg-surface-container-lowest text-primary"
                 style={{ borderColor: 'var(--vc-card-border)' }}
+                aria-hidden
               >
                 {categoryGlyph(item.category)}
               </div>
+
               <div className="min-w-0 flex-1">
-                <span
-                  className="float-end ml-4 mb-4 inline-flex rounded-[0.375rem] border px-4 py-[0.18rem] text-[11px] font-semibold uppercase tracking-[0.2em] text-primary"
-                  style={{ borderColor: 'var(--vc-card-border)' }}
-                >
-                  {tagByCategory[item.category]}
-                </span>
-                <p className="font-display text-xl text-on-background">{item.name}</p>
-                <p className="mt-2 font-sans text-sm text-on-surface-variant">{item.quantity}</p>
+                <p className="font-display text-xl leading-snug tracking-tight text-on-background">{item.name}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-sans text-sm text-on-surface-variant">{item.quantity}</span>
+                  <span
+                    className="rounded-md border px-2.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary"
+                    style={{ borderColor: 'var(--vc-card-border)' }}
+                  >
+                    {CATEGORY_LABELS[item.category]}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col items-center gap-4 self-start">
+
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   aria-pressed={item.status === 'PURCHASED'}
-                  className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition ${
+                  aria-label={item.status === 'PURCHASED' ? 'Marcar como pendente' : 'Marcar como comprado'}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition sm:h-11 sm:w-11 ${
                     item.status === 'PURCHASED'
-                      ? 'border-primary-container bg-primary text-on-primary shadow-[0_0_33px_-6px_rgb(243_209_134/.45)]'
+                      ? 'border-primary-container bg-primary text-on-primary shadow-[0_0_28px_-8px_rgb(243_209_134/.5)]'
                       : 'border-primary-container bg-transparent text-primary hover:bg-primary/10'
                   }`}
                   onClick={() => handleUpdateItemStatus(item.id, item.status === 'PURCHASED' ? 'PENDING' : 'PURCHASED')}
                 >
                   {item.status === 'PURCHASED' ? (
-                    <svg viewBox="0 0 24 24" className="h-6 w-6" stroke="currentColor" fill="none" strokeWidth={2.4}>
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" stroke="currentColor" fill="none" strokeWidth={2.4}>
                       <path d="M20 7 10 17l-5-5" />
                     </svg>
                   ) : null}
@@ -367,18 +392,28 @@ export function RoomPage() {
                 <button
                   type="button"
                   aria-label={`Remover ${item.name}`}
-                  className="text-on-surface-variant transition hover:text-error"
-                  onClick={() => void handleDeleteItem(item.id)}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-error/10 hover:text-error"
+                  onClick={() => setDeleteTarget({ id: item.id, name: item.name })}
                 >
-                  <svg viewBox="0 0 24 24" className="mx-auto h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6">
-                    <path d="M9 11V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M5 9h14l-.9 13H9.92L9 17h8" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M11 21h2" strokeLinecap="round" />
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7h16M10 11v6M14 11v6M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" />
                   </svg>
                 </button>
               </div>
             </article>
           ))}
+
+          {hasMorePending ? (
+            <div className="flex justify-center pt-2">
+              <OutlineGoldButton
+                type="button"
+                className="!normal-case px-8 py-3 text-sm"
+                onClick={() => setPendingVisibleCount((n) => n + PENDING_PAGE_SIZE)}
+              >
+                Mostrar mais {nextChunk > 0 ? `(${nextChunk})` : ''}
+              </OutlineGoldButton>
+            </div>
+          ) : null}
         </div>
 
         {purchasedItems.length ? (
@@ -505,6 +540,27 @@ export function RoomPage() {
           </SurfaceCard>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Remover item?"
+        description={
+          deleteTarget ? (
+            <>
+              Tem certeza que deseja excluir{' '}
+              <span className="font-semibold text-on-surface">{deleteTarget.name}</span> da lista desta sala? Esta ação não pode ser desfeita.
+            </>
+          ) : undefined
+        }
+        cancelLabel="Cancelar"
+        confirmLabel="Excluir"
+        danger
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setDeleteTarget(null)
+        }}
+        onConfirm={() => void confirmDeleteItem()}
+      />
     </main>
   )
 }

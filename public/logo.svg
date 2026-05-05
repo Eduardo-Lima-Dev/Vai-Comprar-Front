@@ -1,0 +1,87 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="260" y1="180" x2="950" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7D77A"/>
+      <stop offset="0.45" stop-color="#C9972F"/>
+      <stop offset="1" stop-color="#8F6420"/>
+    </linearGradient>
+
+    <linearGradient id="goldSoft" x1="300" y1="260" x2="850" y2="850" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE08A"/>
+      <stop offset="0.55" stop-color="#C99A3A"/>
+      <stop offset="1" stop-color="#9B6A22"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)" stroke="url(#gold)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M370 430 L600 220 L830 430"/>
+    <path d="M780 380 V275 H825 V420"/>
+
+    <path d="M420 430 V735 H780 V430"/>
+    <path d="M420 545 H780"/>
+    <path d="M585 545 V735"/>
+
+    <path d="M445 630 H570"/>
+    <path d="M445 690 H570"/>
+
+    <rect x="605" y="565" width="150" height="170" rx="8"/>
+    <path d="M635 640 V690"/>
+  </g>
+
+  <g filter="url(#shadow)" stroke="url(#goldSoft)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M465 495 H735 L715 545 H485 Z"/>
+    <path d="M560 495 C560 435 640 435 640 495"/>
+  </g>
+
+  <g fill="url(#goldSoft)" filter="url(#shadow)">
+    <path d="M500 405 H535 V425 C552 438 555 464 555 495 H480 C480 464 483 438 500 425 V405Z"/>
+    <rect x="504" y="382" width="28" height="28" rx="3"/>
+
+    <rect x="570" y="430" width="70" height="65" rx="10"/>
+    <ellipse cx="605" cy="428" rx="42" ry="11"/>
+
+    <path d="M670 402 L725 395 L735 495 H680 Z"/>
+    <path d="M700 445 C690 430 700 420 715 412 C710 430 725 442 700 445Z" fill="#0B0B0B"/>
+    <path d="M700 445 C690 455 690 470 695 485" stroke="#0B0B0B" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <g fill="url(#goldSoft)" filter="url(#shadow)">
+    <rect x="455" y="585" width="42" height="45" rx="6"/>
+    <rect x="510" y="585" width="42" height="45" rx="6"/>
+    <rect x="455" y="650" width="42" height="45" rx="6"/>
+    <rect x="510" y="650" width="42" height="45" rx="6"/>
+
+    <rect x="458" y="570" width="36" height="10" rx="2"/>
+    <rect x="513" y="570" width="36" height="10" rx="2"/>
+    <rect x="458" y="635" width="36" height="10" rx="2"/>
+    <rect x="513" y="635" width="36" height="10" rx="2"/>
+  </g>
+
+  <g stroke="url(#gold)" stroke-width="4" stroke-linecap="round" opacity="0.9">
+    <path d="M305 765 H410"/>
+    <path d="M790 765 H895"/>
+    <path d="M575 765 H625"/>
+  </g>
+
+  <text
+    x="600"
+    y="900"
+    text-anchor="middle"
+    fill="url(#gold)"
+    font-size="122"
+    font-family="Georgia, 'Times New Roman', serif"
+    letter-spacing="1"
+  >
+    Vai Comprar
+  </text>
+
+  <g stroke="url(#gold)" stroke-width="4" stroke-linecap="round" opacity="0.95">
+    <path d="M485 950 H570"/>
+    <path d="M630 950 H715"/>
+  </g>
+  <circle cx="600" cy="950" r="6" fill="url(#gold)"/>
+</svg>

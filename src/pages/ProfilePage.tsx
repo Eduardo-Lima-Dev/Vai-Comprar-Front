@@ -18,8 +18,8 @@ export function ProfilePage() {
 
   return (
     <main className="mx-auto w-full max-w-lg px-[var(--spacing-margin-edge)] pb-8 pt-6 md:max-w-xl">
-      <header className="mb-8 flex items-start justify-between gap-3">
-        <div>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-[1.65rem] font-medium leading-tight text-on-background">Perfil</h1>
           <p className="mt-2 font-sans text-sm leading-relaxed text-on-surface-variant">Sua conta no Vai Comprar.</p>
         </div>

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useAuth } from '../auth/AuthContext'
+import { BrandLogo } from '../components/BrandLogo'
 import { IconTextField } from '../components/design/IconTextField'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
@@ -53,13 +54,8 @@ export function RegisterPage() {
 
   return (
     <main className="flex min-h-screen flex-col px-[var(--spacing-margin-edge)] pb-10 pt-10">
-      <div className="mb-12 flex flex-col items-center text-center">
-        <h1 className="font-display text-[clamp(2rem,9vw,2.75rem)] font-medium italic tracking-tight text-primary">Vai Comprar</h1>
-        <svg viewBox="0 0 64 72" className="mt-2 h-[3.75rem] w-[3rem] stroke-primary" fill="none" strokeWidth={1.2}>
-          <path d="M14 26V18a18 18 0 1 1 36 0v8" />
-          <path d="M8 26h48v34a8 8 0 0 1-8 8H16a8 8 0 0 1-8-8z" />
-          <path d="M8 30h48" opacity={0.4} />
-        </svg>
+      <div className="mb-10 flex flex-col items-center text-center">
+        <BrandLogo hero />
       </div>
 
       <SurfaceCard className="mx-auto w-full max-w-md" padding="lg">

@@ -49,7 +49,7 @@ export function RoomHistoryPage() {
   return (
     <main className="mx-auto w-full max-w-lg px-[var(--spacing-margin-edge)] pb-48 pt-6 md:max-w-xl">
       <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-[1.75rem] tracking-tight text-on-background">Histórico</h1>
           <p className="mt-3 font-display text-xl text-primary">{room?.name ?? `Sala ${slug}`}</p>
           <p className="mt-3 font-sans text-sm text-on-surface-variant">Compras finalizadas e registradas pela equipe da casa.</p>

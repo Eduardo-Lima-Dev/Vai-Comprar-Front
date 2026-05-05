@@ -17,15 +17,6 @@ type Phase = 'setup' | 'active' | 'summary'
 
 type PersistedSession = { sessionId: string; participantId: string }
 
-function initials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((token) => token.charAt(0).toUpperCase())
-    .join('')
-}
-
 export function RoomShoppingPage() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
@@ -183,18 +174,8 @@ export function RoomShoppingPage() {
 
   return (
     <main className="mx-auto w-full max-w-lg px-[var(--spacing-margin-edge)] pb-48 pt-6 md:max-w-xl">
-      <header className="mb-10 flex items-start justify-between gap-3 border-b pb-8" style={{ borderColor: 'var(--vc-card-border)' }}>
+      <header className="mb-10 flex items-start justify-end border-b pb-8" style={{ borderColor: 'var(--vc-card-border)' }}>
         <HamburgerMenu roomSlug={slug} />
-        <p className="font-display text-base italic tracking-[0.12em] text-primary">Vai Comprar</p>
-        <button
-          type="button"
-          onClick={() => navigate('/profile')}
-          className="flex h-10 w-10 items-center justify-center rounded-full border text-[10px] font-semibold uppercase text-on-primary"
-          style={{ borderColor: 'var(--vc-card-border)', backgroundImage: 'linear-gradient(140deg,var(--color-primary-container),var(--color-primary))' }}
-          aria-label="Perfil"
-        >
-          {initials(user?.name ?? user?.email ?? 'VC')}
-        </button>
       </header>
 
       <h1 className="font-display text-[1.85rem] text-on-background">{headerTitle}</h1>
