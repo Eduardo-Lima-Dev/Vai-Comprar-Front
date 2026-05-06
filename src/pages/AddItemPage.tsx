@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
 import * as roomsApi from '../api/rooms'
 import { Chip } from '../components/design/Chip'
+import { IconSelectField } from '../components/design/IconSelectField'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
 import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
@@ -13,14 +14,26 @@ import type { ItemCategory } from '../types/api'
 
 const categories: ItemCategory[] = ['COMIDA', 'BEBIDAS', 'LIMPEZA', 'HIGIENE', 'DIA_A_DIA', 'OUTROS']
 
-/** Única unidade suportada na UI. */
-const UNIT = 'kg'
+const UNIT_OPTIONS = [
+  { value: 'kg', label: 'kg' },
+  { value: 'g', label: 'Gramas' },
+  { value: 'L', label: 'Litros' },
+  { value: 'ml', label: 'Mililitros' },
+  { value: 'un', label: 'Unidades' },
+  { value: 'pct', label: 'Pacote' },
+  { value: 'cx', label: 'Caixa' },
+  { value: 'dz', label: 'Dúzia' },
+  { value: 'ot', label: 'Outros' },
+] as const
+
+type UnitCode = (typeof UNIT_OPTIONS)[number]['value']
 
 export function AddItemPage() {
   const { slug = '' } = useParams()
 
   const [itemName, setItemName] = useState('')
   const [qty, setQty] = useState('')
+  const [unit, setUnit] = useState<UnitCode>('kg')
   const [category, setCategory] = useState<ItemCategory>('COMIDA')
   const [loading, setLoading] = useState(false)
 
@@ -33,7 +46,7 @@ export function AddItemPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!slug) return
-    const quantityCombined = `${qty.trim() || '1'} ${UNIT}`.trim()
+    const quantityCombined = `${qty.trim() || '1'} ${unit}`.trim()
 
     setLoading(true)
     try {
@@ -53,6 +66,7 @@ export function AddItemPage() {
   }
 
   const qtyDisplay = qty.trim().length === 0 ? null : qty.trim()
+  const unitSummaryLabel = UNIT_OPTIONS.find((o) => o.value === unit)?.label ?? unit
 
   const pencilIcon = (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -94,7 +108,11 @@ export function AddItemPage() {
         <div className="min-w-0">
           <p className="truncate font-display text-xl text-on-surface">{itemName || 'Novo produto'}</p>
           <p className="mt-2 font-sans text-sm leading-relaxed text-on-surface-variant">
-            {!qtyDisplay ? <span className="text-outline">Informe quantidade (kg) • </span> : `${qtyDisplay} kg • `}
+            {!qtyDisplay ? (
+              <span className="text-outline">Informe quantidade • </span>
+            ) : (
+              `${qtyDisplay} ${unitSummaryLabel} • `
+            )}
             <span className="text-primary">{CATEGORY_LABELS[category]}</span>
           </p>
         </div>
@@ -104,7 +122,10 @@ export function AddItemPage() {
         <form id="add-item-form" onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="tracking-label mb-2 block font-sans text-xs font-semibold uppercase text-primary">Nome</label>
-            <div className="flex items-center gap-3 rounded-xl border px-4 py-2.5" style={{ borderColor: 'var(--vc-card-border)', backgroundColor: '#100e09' }}>
+            <div
+              className="flex items-center gap-3 rounded-xl border bg-surface-container-lowest px-4 py-2.5 shadow-inner focus-within:border-primary-container focus-within:ring-2 focus-within:ring-primary/25"
+              style={{ borderColor: 'var(--vc-card-border)' }}
+            >
               <span className="text-primary">{pencilIcon}</span>
               <input
                 className="placeholder:text-on-surface-variant flex-1 border-0 bg-transparent py-1 font-sans text-base text-on-surface outline-none"
@@ -116,23 +137,46 @@ export function AddItemPage() {
             </div>
           </div>
 
-          <div>
-            <label className="tracking-label mb-2 block font-sans text-xs font-semibold uppercase text-primary">Quantidade (kg)</label>
-            <div className="flex items-center gap-3 rounded-xl border px-4 py-2.5" style={{ borderColor: 'var(--vc-card-border)', backgroundColor: '#100e09' }}>
-              <span aria-hidden className="font-sans font-semibold text-on-surface-variant">
-                #
-              </span>
-              <input
-                inputMode="decimal"
-                placeholder="Ex.: 2,5"
-                className="min-w-0 flex-1 border-0 bg-transparent py-1 font-sans text-base text-on-surface outline-none"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                required
-              />
-              <span className="shrink-0 rounded-lg border px-3 py-1 font-sans text-sm font-semibold text-primary" style={{ borderColor: 'var(--vc-card-border)' }}>
-                kg
-              </span>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1 sm:max-w-[42%]">
+              <label className="tracking-label mb-2 block font-sans text-xs font-semibold uppercase text-primary">Quantidade</label>
+              <div className="flex items-center rounded-xl border px-4 py-2.5" style={{ borderColor: 'var(--vc-card-border)', backgroundColor: '#100e09' }}>
+                <span aria-hidden className="font-sans font-semibold text-on-surface-variant">
+                  #
+                </span>
+                <input
+                  inputMode="decimal"
+                  placeholder="Ex.: 2,5"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-1 ps-2 font-sans text-base text-on-surface outline-none"
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <label htmlFor="add-item-unit" className="tracking-label mb-2 block font-sans text-xs font-semibold uppercase text-primary">
+                Unidade
+              </label>
+              <IconSelectField
+                id="add-item-unit"
+                label="Unidade"
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M8 21h8M12 3v18" strokeLinecap="round" />
+                    <path d="M6 8h2M6 12h2M6 16h2M16 8h2M16 12h2M16 16h2" strokeLinecap="round" />
+                  </svg>
+                }
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as UnitCode)}
+              >
+                {UNIT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </IconSelectField>
             </div>
           </div>
 
