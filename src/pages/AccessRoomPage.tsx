@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import * as roomsApi from '../api/rooms'
 import { HamburgerMenu } from '../components/HamburgerMenu'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
@@ -10,6 +12,7 @@ import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 export function AccessRoomPage() {
   const navigate = useNavigate()
   const [slug, setSlug] = useState('')
+  const [loading, setLoading] = useState(false)
 
   function normalizeRoomInput(raw: string): string {
     const input = raw.trim()
@@ -32,12 +35,20 @@ export function AccessRoomPage() {
     return firstSegment.trim()
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const normalized = normalizeRoomInput(slug)
     if (!normalized) return
-    localStorage.setItem(LAST_ROOM_SLUG_KEY, normalized)
-    navigate(`/rooms/${normalized}`)
+    setLoading(true)
+    try {
+      await roomsApi.getRoom(normalized)
+      localStorage.setItem(LAST_ROOM_SLUG_KEY, normalized)
+      navigate(`/rooms/${normalized}`)
+    } catch {
+      toast.error('Slug ou link inválido (ou sem acesso para esta conta).')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -67,8 +78,8 @@ export function AccessRoomPage() {
             />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <PrimaryButton type="submit" className="!normal-case sm:flex-1" fullWidth>
-              Entrar
+            <PrimaryButton type="submit" className="!normal-case sm:flex-1" fullWidth disabled={loading}>
+              {loading ? 'Validando…' : 'Entrar'}
             </PrimaryButton>
             <OutlineGoldButton type="button" fullWidth className="!normal-case font-sans sm:flex-1" onClick={() => navigate('/')}>
               Voltar
