@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
 import * as participantsApi from '../api/participants'
 import * as roomsApi from '../api/rooms'
+import { ApiError } from '../api/client'
 import { HamburgerMenu } from '../components/HamburgerMenu'
 import { Chip } from '../components/design/Chip'
 import { ConfirmDialog } from '../components/design/ConfirmDialog'
@@ -110,6 +111,12 @@ export function RoomPage() {
         items: Array.isArray(items) ? items : [],
       })
     } catch (err) {
+      if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+        localStorage.removeItem(LAST_ROOM_SLUG_KEY)
+        toast.warning('Você não tem acesso a esta sala nesta conta. Entre por um slug válido.')
+        navigate('/rooms/access', { replace: true })
+        return
+      }
       toast.error(getErrorMessage(err, 'Erro ao carregar sala.'))
     }
   }
@@ -203,6 +210,17 @@ export function RoomPage() {
     }
   }
 
+  async function handleCopyRoomLink() {
+    if (!slug) return
+    const link = `${window.location.origin}/rooms/${slug}`
+    try {
+      await navigator.clipboard?.writeText(link)
+      toast.success('Link da sala copiado.')
+    } catch {
+      toast.error('Não foi possível copiar o link.')
+    }
+  }
+
   const filteredPending = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return pendingItems.filter((item) => {
@@ -242,6 +260,9 @@ export function RoomPage() {
             <h1 className="font-display text-[2rem] tracking-tight text-on-background">{state.room?.name ? state.room.name : `Sala ${slug}`}</h1>
             <p className="mt-2 font-sans text-sm text-on-surface-variant">Lista compartilhada</p>
           </div>
+          <OutlineGoldButton type="button" className="!normal-case px-4 py-2 text-xs" onClick={() => void handleCopyRoomLink()}>
+            Copiar link
+          </OutlineGoldButton>
         </div>
 
         {/* Participants */}

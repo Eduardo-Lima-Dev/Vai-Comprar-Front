@@ -33,7 +33,14 @@ export function CreateRoomPage() {
         plannedDate: iso,
       })
       localStorage.setItem(LAST_ROOM_SLUG_KEY, room.slug)
-      toast.success(`Sala criada: ${room.slug}`)
+      const roomPath = `/rooms/${room.slug}`
+      const roomUrl = `${window.location.origin}${roomPath}`
+      try {
+        await navigator.clipboard?.writeText(roomUrl)
+        toast.success(`Sala criada: ${room.slug}. Link copiado!`)
+      } catch {
+        toast.success(`Sala criada: ${room.slug}`)
+      }
       navigate(`/rooms/${room.slug}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Nao foi possivel criar a sala.')
@@ -111,22 +118,9 @@ export function CreateRoomPage() {
             style={{ borderColor: 'var(--vc-card-border)', background: 'rgba(16,14,9,0.55)' }}
           >
             <p className="min-w-0 break-all font-sans text-[0.8rem] tracking-tight text-primary sm:text-sm">
-              vai-comprar.app/sala/<strong className="font-semibold">{slugPreview}</strong>
+              Prévia: /rooms/<strong className="font-semibold">{slugPreview}</strong>
             </p>
-            <button
-              type="button"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-surface-container-high text-primary"
-              aria-label="Copiar prévia da URL da sala"
-              onClick={() => {
-                void navigator.clipboard?.writeText(`https://vai-comprar.app/sala/${slugPreview}`)
-                toast.info('Prévia da URL copiada.')
-              }}
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M13 17H7a4 4 0 1 1 0-8h10a4 4 0 0 1 .2 8" />
-                <path d="M15 21h-8a6 6 0 0 1 0-12h11" />
-              </svg>
-            </button>
+            <span className="font-sans text-[0.72rem] text-on-surface-variant">Link final ao criar sala</span>
           </div>
 
           <section>

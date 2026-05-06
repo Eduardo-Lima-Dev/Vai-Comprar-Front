@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import * as authApi from '../api/auth'
+import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 import { clearSessionToken, getSessionToken, setSessionToken } from '../lib/session'
 import type { User } from '../types/api'
 
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   async function login(email: string, password: string) {
+    localStorage.removeItem(LAST_ROOM_SLUG_KEY)
     const result = await authApi.login({ email, password })
     setSessionToken(result.token)
     if (result.user) {
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function register(name: string, email: string, password: string) {
+    localStorage.removeItem(LAST_ROOM_SLUG_KEY)
     const result = await authApi.register({ name, email, password })
     setSessionToken(result.token)
     if (result.user) {
@@ -59,6 +62,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function logout() {
+    localStorage.removeItem(LAST_ROOM_SLUG_KEY)
     clearSessionToken()
     setUser(null)
   }

@@ -11,12 +11,30 @@ export function AccessRoomPage() {
   const navigate = useNavigate()
   const [slug, setSlug] = useState('')
 
+  function normalizeRoomInput(raw: string): string {
+    const input = raw.trim()
+    if (!input) return ''
+
+    // Se vier URL completa, extrai apenas o pathname.
+    let candidate = input
+    try {
+      const maybeUrl = new URL(input)
+      candidate = maybeUrl.pathname
+    } catch {
+      // Não era URL completa; segue como slug/path cru.
+    }
+
+    candidate = candidate.replace(/^\/+|\/+$/g, '')
+    candidate = candidate.replace(/^rooms\/?/i, '').replace(/^sala\/?/i, '')
+
+    // Aceita só o primeiro segmento final como slug.
+    const firstSegment = candidate.split('/')[0] ?? ''
+    return firstSegment.trim()
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    let normalized = slug.trim().toLowerCase()
-    const hostMatch = /vai-comprar\.(?:app|[\w.-]+)\/sala\/([\w-]+)/i.exec(normalized)
-    if (hostMatch?.[1]) normalized = hostMatch[1]
-    normalized = normalized.replace(/^\/+|\/+$/g, '').replace(/^rooms\/(?:[^/]+\/)?/i, '').replace(/^sala\/?/i, '')
+    const normalized = normalizeRoomInput(slug)
     if (!normalized) return
     localStorage.setItem(LAST_ROOM_SLUG_KEY, normalized)
     navigate(`/rooms/${normalized}`)
