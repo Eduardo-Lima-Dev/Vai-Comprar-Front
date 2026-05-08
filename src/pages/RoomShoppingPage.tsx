@@ -66,31 +66,22 @@ export function RoomShoppingPage() {
     else sessionStorage.setItem(sessKey(), JSON.stringify(data))
   }
 
-  async function loadAll() {
-    if (!slug) return
-    try {
-      const [r, list, fetchedParticipants] = await Promise.all([
-        roomsApi.getRoom(slug),
-        itemsApi.listItems(slug),
-        participantsApi.getParticipants(slug).catch(() => [] as RoomParticipant[]),
-      ])
-      setRoom(r)
-      setItems(Array.isArray(list) ? list : [])
-      const active = Array.isArray(fetchedParticipants)
-        ? fetchedParticipants.filter((p) => p.userId !== null)
-        : []
-      setRoomParticipants(Array.isArray(fetchedParticipants) ? fetchedParticipants : [])
-      setParticipantId((prev) => {
-        if (prev) return prev
-        const mine = active.find((p) => p.userId === user?.id)
-        if (mine) return mine.id
-        return active.length === 1 ? active[0]!.id : ''
-      })
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao carregar sessão.')
-    } finally {
-      setLoadingRoom(false)
-    }
+  async function loadAll(): Promise<string> {
+    if (!slug) return ''
+    const [r, list, fetchedParticipants] = await Promise.all([
+      roomsApi.getRoom(slug),
+      itemsApi.listItems(slug),
+      participantsApi.getParticipants(slug).catch(() => [] as RoomParticipant[]),
+    ])
+    setRoom(r)
+    setItems(Array.isArray(list) ? list : [])
+    const allFetched = Array.isArray(fetchedParticipants) ? fetchedParticipants : []
+    const active = allFetched.filter((p) => p.userId !== null && p.role === 'PARTICIPANT')
+    setRoomParticipants(allFetched)
+    const mine = active.find((p) => p.userId === user?.id)
+    const autoId = mine?.id ?? (active.length === 1 ? active[0]!.id : '')
+    setParticipantId(autoId)
+    return autoId
   }
 
   async function syncItems() {
@@ -108,23 +99,42 @@ export function RoomShoppingPage() {
     setLoadingRoom(true)
 
     async function init() {
-      const [, activeSession] = await Promise.all([
-        loadAll(),
-        shoppingApi.getActiveSession(slug).catch(() => null),
-      ])
-      void roomsApi.touchRoom(slug).catch(() => null)
+      try {
+        const [autoParticipantId, activeSession] = await Promise.all([
+          loadAll(),
+          shoppingApi.getActiveSession(slug).catch(() => null),
+        ])
+        void roomsApi.touchRoom(slug).catch(() => null)
 
-      const saved = readStored()
-      if (saved) {
-        setSessionId(saved.sessionId)
-        setParticipantId(saved.participantId)
-        setPhase('active')
-      } else if (activeSession) {
-        setWatcherSession(activeSession)
-        setPhase('watching')
-      } else {
-        setSessionId('')
+        const saved = readStored()
+        if (saved) {
+          setSessionId(saved.sessionId)
+          setParticipantId(saved.participantId)
+          setPhase('active')
+          return
+        }
+
+        if (activeSession) {
+          setWatcherSession(activeSession)
+          setPhase('watching')
+          return
+        }
+
+        if (autoParticipantId) {
+          const session = await shoppingApi.startShopping(slug, { participantId: autoParticipantId })
+          setSessionId(session.id)
+          writeStored({ sessionId: session.id, participantId: autoParticipantId })
+          setPhase('active')
+          await syncItems()
+          return
+        }
+
         setPhase('setup')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Erro ao iniciar compra.')
+        setPhase('setup')
+      } finally {
+        setLoadingRoom(false)
       }
     }
 
