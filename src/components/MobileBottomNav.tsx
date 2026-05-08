@@ -2,6 +2,9 @@ import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useAuth } from '../auth/AuthContext'
+import { roomsCacheKey } from '../constants/storage'
+import type { Room } from '../types/api'
 
 type TabId = 'home' | 'rooms' | 'activity' | 'profile'
 
@@ -56,6 +59,7 @@ function isActivityPath(pathname: string): boolean {
 export function MobileBottomNav() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { user } = useAuth()
 
   const tabActive = (tab: TabId): boolean => {
     if (tab === 'home') return pathname === '/'
@@ -72,8 +76,20 @@ export function MobileBottomNav() {
     return slug
   }
 
+  function getMostRecentSlug(): string | null {
+    if (!user) return null
+    try {
+      const cached = localStorage.getItem(roomsCacheKey(user.id))
+      if (!cached) return null
+      const rooms = JSON.parse(cached) as Room[]
+      return rooms.find((r) => !r.archivedAt)?.slug ?? null
+    } catch {
+      return null
+    }
+  }
+
   function handleRooms() {
-    const slug = getCurrentSlug()
+    const slug = getCurrentSlug() ?? getMostRecentSlug()
     if (slug) {
       navigate(`/rooms/${slug}`)
       return
@@ -82,7 +98,7 @@ export function MobileBottomNav() {
   }
 
   function handleActivity() {
-    const slug = getCurrentSlug()
+    const slug = getCurrentSlug() ?? getMostRecentSlug()
     if (slug) {
       navigate(`/rooms/${slug}/history`)
       return

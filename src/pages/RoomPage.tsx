@@ -111,10 +111,14 @@ export function RoomPage() {
     if (!slug) return
     try {
       const [room, items] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
-      setState({
-        room: { ...room, participants: Array.isArray(room.participants) ? room.participants : [] },
+      setState((prev) => ({
+        room: {
+          ...room,
+          createdById: room.createdById ?? prev.room?.createdById,
+          participants: Array.isArray(room.participants) ? room.participants : [],
+        },
         items: Array.isArray(items) ? items : [],
-      })
+      }))
     } catch (err) {
       if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
         toast.warning('Você não tem acesso a esta sala nesta conta. Entre por um slug válido.')
@@ -132,7 +136,19 @@ export function RoomPage() {
   }, [slug])
 
   useEffect(() => {
-    if (slug) void roomsApi.touchRoom(slug).catch(() => null)
+    if (!slug) return
+    void roomsApi.touchRoom(slug)
+      .then((touched) => {
+        if (touched.createdById) {
+          setState((prev) => ({
+            ...prev,
+            room: prev.room
+              ? { ...prev.room, createdById: touched.createdById }
+              : { ...touched, participants: [] },
+          }))
+        }
+      })
+      .catch(() => null)
   }, [slug])
 
   useEffect(() => {
