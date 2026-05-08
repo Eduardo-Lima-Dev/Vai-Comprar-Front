@@ -17,3 +17,7 @@ export function startShopping(slug: string, input: StartShoppingInput) {
 export function finishShopping(slug: string, sessionId: string, input: FinishShoppingInput) {
   return apiClient.post<Purchase>(`/rooms/${slug}/shopping/${sessionId}/finish`, input)
 }
+
+export function getActiveSession(slug: string) {
+  return apiClient.get<ShoppingSession | null>(`/rooms/${slug}/shopping/active`)
+}

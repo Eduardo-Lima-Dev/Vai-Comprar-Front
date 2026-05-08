@@ -11,9 +11,9 @@ import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
 import { shoppingSessionStorageKey } from '../constants/storage'
-import type { Item, Room } from '../types/api'
+import type { Item, Room, ShoppingSession } from '../types/api'
 
-type Phase = 'setup' | 'active' | 'summary'
+type Phase = 'setup' | 'active' | 'watching' | 'summary'
 
 type PersistedSession = { sessionId: string; participantId: string }
 
@@ -29,6 +29,8 @@ export function RoomShoppingPage() {
   const [phase, setPhase] = useState<Phase>('setup')
   const [totalAmount, setTotalAmount] = useState('')
   const [busy, setBusy] = useState(false)
+  const [loadingRoom, setLoadingRoom] = useState(true)
+  const [watcherSession, setWatcherSession] = useState<ShoppingSession | null>(null)
 
   const participants = room?.participants ?? []
   const responsible = participants.find((p) => p.id === participantId)
@@ -66,10 +68,18 @@ export function RoomShoppingPage() {
     if (!slug) return
     try {
       const [r, list] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
-      setRoom({ ...r, participants: Array.isArray(r.participants) ? r.participants : [] })
+      const roomParticipants = Array.isArray(r.participants) ? r.participants : []
+      setRoom({ ...r, participants: roomParticipants })
       setItems(Array.isArray(list) ? list : [])
+      // Auto-seleciona o único participante disponível
+      setParticipantId((prev) => {
+        if (prev) return prev
+        return roomParticipants.length === 1 ? roomParticipants[0]!.id : ''
+      })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao carregar sessão.')
+    } finally {
+      setLoadingRoom(false)
     }
   }
 
@@ -84,18 +94,39 @@ export function RoomShoppingPage() {
   }
 
   useEffect(() => {
-    void loadAll()
-    if (slug) void roomsApi.touchRoom(slug).catch(() => null)
-    const saved = readStored()
-    if (saved) {
-      setSessionId(saved.sessionId)
-      setParticipantId(saved.participantId)
-      setPhase('active')
-    } else {
-      setSessionId('')
-      setPhase('setup')
+    if (!slug) return
+    setLoadingRoom(true)
+
+    async function init() {
+      const [, activeSession] = await Promise.all([
+        loadAll(),
+        shoppingApi.getActiveSession(slug).catch(() => null),
+      ])
+      void roomsApi.touchRoom(slug).catch(() => null)
+
+      const saved = readStored()
+      if (saved) {
+        setSessionId(saved.sessionId)
+        setParticipantId(saved.participantId)
+        setPhase('active')
+      } else if (activeSession) {
+        setWatcherSession(activeSession)
+        setPhase('watching')
+      } else {
+        setSessionId('')
+        setPhase('setup')
+      }
     }
+
+    void init()
   }, [slug])
+
+  // Polling a cada 3s durante compra ativa ou modo observador
+  useEffect(() => {
+    if (phase !== 'active' && phase !== 'watching') return
+    const interval = setInterval(() => void syncItems(), 3000)
+    return () => clearInterval(interval)
+  }, [phase, slug])
 
   async function start(event: FormEvent) {
     event.preventDefault()
@@ -170,7 +201,11 @@ export function RoomShoppingPage() {
     }
   }
 
-  const headerTitle = phase === 'setup' ? 'Preparar compra' : phase === 'active' ? 'Compra em andamento' : 'Finalizar compra'
+  const headerTitle =
+    phase === 'setup' ? 'Preparar compra' :
+    phase === 'active' ? 'Compra em andamento' :
+    phase === 'watching' ? 'Acompanhar compra' :
+    'Finalizar compra'
 
   return (
     <main className="mx-auto w-full max-w-lg px-[var(--spacing-margin-edge)] pb-48 pt-6 md:max-w-xl">
@@ -184,7 +219,9 @@ export function RoomShoppingPage() {
           ? 'Escolha quem fará as compras fisicamente e inicie o fluxo dedicado.'
           : phase === 'active'
             ? 'Marque os itens conforme forem colocados no carrinho.'
-            : 'Revise o resumo e confirme o valor total para registrar no histórico.'}
+            : phase === 'watching'
+              ? 'Você está assistindo a compra em tempo real.'
+              : 'Revise o resumo e confirme o valor total para registrar no histórico.'}
       </p>
 
       {phase === 'setup' && (
@@ -194,27 +231,138 @@ export function RoomShoppingPage() {
               <label htmlFor="shopper" className="tracking-label text-xs font-semibold uppercase text-primary-container">
                 Responsável
               </label>
-              <select
-                id="shopper"
-                required
-                value={participantId}
-                onChange={(e) => setParticipantId(e.target.value)}
-                className="mt-4 w-full rounded-xl border bg-surface-container-lowest px-4 py-3 font-sans text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
-                style={{ borderColor: 'var(--vc-card-border)' }}
-              >
-                <option value="">Selecione participante...</option>
-                {participants.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              {loadingRoom ? (
+                <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" />
+              ) : participants.length === 0 ? (
+                <p className="mt-4 font-sans text-sm text-on-surface-variant">
+                  Nenhum participante na sala ainda.{' '}
+                  <button type="button" className="underline text-primary" onClick={() => navigate(`/rooms/${slug}`)}>
+                    Adicione participantes primeiro.
+                  </button>
+                </p>
+              ) : (
+                <select
+                  id="shopper"
+                  required
+                  value={participantId}
+                  onChange={(e) => setParticipantId(e.target.value)}
+                  className="mt-4 w-full rounded-xl border bg-surface-container-lowest px-4 py-3 font-sans text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
+                  style={{ borderColor: 'var(--vc-card-border)' }}
+                >
+                  <option value="">Selecione participante...</option>
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-            <PrimaryButton type="submit" disabled={busy} fullWidth className="uppercase tracking-[0.18em]">
-              Estou indo comprar
+            <PrimaryButton
+              type="submit"
+              disabled={busy || loadingRoom || participants.length === 0}
+              fullWidth
+              className="uppercase tracking-[0.18em]"
+            >
+              {busy ? 'Iniciando…' : 'Estou indo comprar'}
             </PrimaryButton>
           </form>
         </SurfaceCard>
+      )}
+
+      {phase === 'watching' && (
+        <div className="mt-10 space-y-10">
+          <SurfaceCard padding="lg">
+            <div className="flex flex-wrap gap-5">
+              <div
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-[2px] text-primary"
+                style={{ borderColor: 'rgb(214 181 109 / .55)', background: 'rgba(0,0,0,0.45)' }}
+              >
+                <svg viewBox="0 0 40 42" fill="none" className="h-9 w-9" stroke="currentColor" strokeWidth={1.3}>
+                  <path d="M10 38h31V15H26V7H17l-5 17H21l2-17" strokeLinejoin="round" />
+                  <circle cx="16" cy="40" r="2" />
+                  <circle cx="33" cy="40" r="2" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-display text-xl text-on-surface">
+                  {watcherSession?.participantName ?? 'Alguém'} está fazendo as compras
+                </p>
+                <p className="mt-2 flex items-center gap-2 font-sans text-sm text-on-surface-variant">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                  </span>
+                  Atualizando em tempo real
+                </p>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between font-sans text-[11px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--color-primary-container)' }}>
+              <span>Progresso</span>
+              <span>{purchased.length} de {Math.max(counted, 1)} itens marcados</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full" style={{ background: 'rgb(71 66 61)' }}>
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progressed}%`, boxShadow: '0 0 14px rgb(243 209 134 / .45)' }} />
+            </div>
+          </div>
+
+          <section>
+            <h2 className="font-display mb-4 text-lg text-on-background">Pendentes</h2>
+            {!pending.length ? (
+              <p className="font-sans text-sm text-outline">Todos os itens foram comprados!</p>
+            ) : (
+              <ul className="space-y-3">
+                {pending.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap gap-4 rounded-xl border px-4 py-3 font-sans"
+                    style={{ borderColor: 'var(--vc-card-border)', background: 'rgba(30,26,21,0.78)' }}
+                  >
+                    <div className="h-10 w-10 shrink-0 rounded-md border-[2px] border-primary/30" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-on-surface">{item.name}</p>
+                      <p className="text-sm text-outline">{item.quantity}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {purchased.length > 0 && (
+            <section>
+              <h2 className="font-display mb-4 text-lg text-on-background">Comprados</h2>
+              <ul className="space-y-3">
+                {purchased.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap gap-4 rounded-xl border px-4 py-3 font-sans opacity-70"
+                    style={{ borderColor: 'var(--vc-card-border)', background: 'rgba(30,26,21,0.55)' }}
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-[2px] border-primary-container bg-primary text-on-primary">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none" strokeWidth={2.2}>
+                        <path d="M20 7 10 17l-5-5" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-on-surface">{item.name}</p>
+                      <p className="text-sm text-outline">{item.quantity}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <div className="pb-28">
+            <OutlineGoldButton type="button" fullWidth className="!normal-case py-4" onClick={() => navigate(`/rooms/${slug}`)}>
+              Voltar para a sala
+            </OutlineGoldButton>
+          </div>
+        </div>
       )}
 
       {(phase === 'active' || phase === 'summary') && (

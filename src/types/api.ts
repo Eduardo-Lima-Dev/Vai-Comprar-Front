@@ -49,6 +49,7 @@ export type ShoppingSession = {
   id: string
   startedAt: string
   participantId: string
+  participantName?: string
 }
 
 export type Purchase = {

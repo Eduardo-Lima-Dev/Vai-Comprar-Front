@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
 import * as participantsApi from '../api/participants'
 import * as roomsApi from '../api/rooms'
+import * as shoppingApi from '../api/shopping'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { HamburgerMenu } from '../components/HamburgerMenu'
@@ -16,7 +17,7 @@ import { SurfaceCard } from '../components/design/SurfaceCard'
 import { roomsCacheKey } from '../constants/storage'
 import { CATEGORY_LABELS, ROOM_FILTER_CATEGORIES } from '../lib/categories'
 import { formatPlannedDateRaw, parseDateInputToIso, toDateInputValue } from '../lib/format'
-import type { Item, ItemCategory, ItemStatus, Participant, Room } from '../types/api'
+import type { Item, ItemCategory, ItemStatus, Participant, Room, ShoppingSession } from '../types/api'
 
 type RoomState = {
   room: Room | null
@@ -96,6 +97,7 @@ export function RoomPage() {
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [roomActionPending, setRoomActionPending] = useState<'leave' | 'delete' | null>(null)
   const [roomActionBusy, setRoomActionBusy] = useState(false)
+  const [activeSession, setActiveSession] = useState<ShoppingSession | null>(null)
 
   const isCreator = Boolean(state.room && user?.id === state.room.createdById)
 
@@ -110,7 +112,11 @@ export function RoomPage() {
   async function loadRoomData() {
     if (!slug) return
     try {
-      const [room, items] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
+      const [room, items, session] = await Promise.all([
+        roomsApi.getRoom(slug),
+        itemsApi.listItems(slug),
+        shoppingApi.getActiveSession(slug).catch(() => null),
+      ])
       setState((prev) => ({
         room: {
           ...room,
@@ -119,6 +125,7 @@ export function RoomPage() {
         },
         items: Array.isArray(items) ? items : [],
       }))
+      setActiveSession(session)
     } catch (err) {
       if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
         toast.warning('Você não tem acesso a esta sala nesta conta. Entre por um slug válido.')
@@ -570,9 +577,29 @@ export function RoomPage() {
 
       <div className="fixed inset-x-0 bottom-[5.85rem] z-30 px-[var(--spacing-margin-edge)]">
         <div className="mx-auto flex max-w-lg items-center gap-4 pb-10 md:max-w-xl">
-          <PrimaryButton type="button" fullWidth className="!basis-[73%] !normal-case px-14 py-[1.125rem]" onClick={() => navigate(`/rooms/${slug}/shopping`)}>
-            Estou indo comprar
-          </PrimaryButton>
+          {activeSession ? (
+            <PrimaryButton
+              type="button"
+              fullWidth
+              className="!basis-[73%] !normal-case px-6 py-[1.125rem] flex items-center justify-center gap-3"
+              onClick={() => navigate(`/rooms/${slug}/shopping`)}
+            >
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-on-primary opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-on-primary" />
+              </span>
+              <span className="truncate">{activeSession.participantName ?? 'Alguém'} está comprando</span>
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton
+              type="button"
+              fullWidth
+              className="!basis-[73%] !normal-case px-14 py-[1.125rem]"
+              onClick={() => navigate(`/rooms/${slug}/shopping`)}
+            >
+              Estou indo comprar
+            </PrimaryButton>
+          )}
           <button
             type="button"
             aria-label="Adicionar item"
