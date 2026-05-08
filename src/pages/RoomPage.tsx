@@ -6,12 +6,14 @@ import * as itemsApi from '../api/items'
 import * as participantsApi from '../api/participants'
 import * as roomsApi from '../api/rooms'
 import { ApiError } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import { HamburgerMenu } from '../components/HamburgerMenu'
 import { Chip } from '../components/design/Chip'
 import { ConfirmDialog } from '../components/design/ConfirmDialog'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
+import { roomsCacheKey } from '../constants/storage'
 import { CATEGORY_LABELS, ROOM_FILTER_CATEGORIES } from '../lib/categories'
 import { formatPlannedDateRaw, parseDateInputToIso, toDateInputValue } from '../lib/format'
 import type { Item, ItemCategory, ItemStatus, Participant, Room } from '../types/api'
@@ -81,6 +83,7 @@ function categoryGlyph(category: ItemCategory) {
 export function RoomPage() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [state, setState] = useState<RoomState>({ room: null, items: [] })
   const [newParticipantName, setNewParticipantName] = useState('')
   const [search, setSearch] = useState('')
@@ -91,6 +94,10 @@ export function RoomPage() {
   const [pendingVisibleCount, setPendingVisibleCount] = useState(PENDING_PAGE_SIZE)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [roomActionPending, setRoomActionPending] = useState<'leave' | 'delete' | null>(null)
+  const [roomActionBusy, setRoomActionBusy] = useState(false)
+
+  const isCreator = Boolean(state.room && user?.id === state.room.createdById)
 
   const pendingItems = useMemo(() => state.items.filter((item) => item.status !== 'PURCHASED'), [state.items])
   const purchasedItems = useMemo(() => state.items.filter((item) => item.status === 'PURCHASED'), [state.items])
@@ -142,6 +149,48 @@ export function RoomPage() {
       await loadRoomData()
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao arquivar sala.'))
+    }
+  }
+
+  function invalidateRoomCache() {
+    if (!user) return
+    try {
+      const key = roomsCacheKey(user.id)
+      const cached = localStorage.getItem(key)
+      if (cached) {
+        const rooms = JSON.parse(cached) as Room[]
+        localStorage.setItem(key, JSON.stringify(rooms.filter((r) => r.slug !== slug)))
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function confirmLeaveRoom() {
+    if (!slug) return
+    setRoomActionBusy(true)
+    try {
+      await roomsApi.leaveRoom(slug)
+      invalidateRoomCache()
+      toast.success('Você saiu da sala.')
+      navigate('/', { replace: true })
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao sair da sala.'))
+      setRoomActionBusy(false)
+      setRoomActionPending(null)
+    }
+  }
+
+  async function confirmDeleteRoom() {
+    if (!slug) return
+    setRoomActionBusy(true)
+    try {
+      await roomsApi.deleteRoom(slug)
+      invalidateRoomCache()
+      toast.success('Sala apagada com sucesso.')
+      navigate('/', { replace: true })
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao apagar sala.'))
+      setRoomActionBusy(false)
+      setRoomActionPending(null)
     }
   }
 
@@ -253,7 +302,12 @@ export function RoomPage() {
       {/* Top chrome */}
       <header className="mb-10 flex flex-col gap-10">
         <div className="flex items-start justify-end">
-          <HamburgerMenu roomSlug={slug} onArchiveRoom={handleArchiveRoom} />
+          <HamburgerMenu
+            roomSlug={slug}
+            onArchiveRoom={isCreator ? handleArchiveRoom : undefined}
+            onDeleteRoom={isCreator ? () => setRoomActionPending('delete') : undefined}
+            onLeaveRoom={!isCreator && state.room ? () => setRoomActionPending('leave') : undefined}
+          />
         </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-10" style={{ borderColor: 'var(--vc-card-border)' }}>
@@ -578,10 +632,32 @@ export function RoomPage() {
         confirmLabel="Excluir"
         danger
         busy={deleteBusy}
-        onCancel={() => {
-          if (!deleteBusy) setDeleteTarget(null)
-        }}
+        onCancel={() => { if (!deleteBusy) setDeleteTarget(null) }}
         onConfirm={() => void confirmDeleteItem()}
+      />
+
+      <ConfirmDialog
+        open={roomActionPending === 'leave'}
+        title="Sair da sala?"
+        description="Você perderá acesso a esta sala. Para voltar, precisará do slug ou link novamente."
+        cancelLabel="Cancelar"
+        confirmLabel="Sair"
+        danger
+        busy={roomActionBusy}
+        onCancel={() => { if (!roomActionBusy) setRoomActionPending(null) }}
+        onConfirm={() => void confirmLeaveRoom()}
+      />
+
+      <ConfirmDialog
+        open={roomActionPending === 'delete'}
+        title="Apagar sala?"
+        description="Esta ação é permanente e remove todos os itens, compras e histórico da sala. Não pode ser desfeita."
+        cancelLabel="Cancelar"
+        confirmLabel="Apagar"
+        danger
+        busy={roomActionBusy}
+        onCancel={() => { if (!roomActionBusy) setRoomActionPending(null) }}
+        onConfirm={() => void confirmDeleteRoom()}
       />
     </main>
   )

@@ -31,3 +31,11 @@ export function listRooms() {
 export function touchRoom(slug: string) {
   return apiClient.post<Room>(`/rooms/${slug}/touch`)
 }
+
+export function leaveRoom(slug: string) {
+  return apiClient.delete<{ success: true }>(`/rooms/${slug}/leave`)
+}
+
+export function deleteRoom(slug: string) {
+  return apiClient.delete<{ id: string; deleted: true }>(`/rooms/${slug}`)
+}

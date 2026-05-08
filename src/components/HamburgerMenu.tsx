@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext'
 type HamburgerMenuProps = {
   roomSlug?: string
   onArchiveRoom?: () => void
+  onDeleteRoom?: () => void
+  onLeaveRoom?: () => void
   /** Padrão: ícone hambúrguer. `gear` para atalho de configurações na sala. */
   trigger?: 'icon' | 'gear'
 }
@@ -66,6 +68,18 @@ const icons = {
       <path d="M4 12h16" />
     </svg>
   ),
+  leave: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M17 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 12H9" strokeLinecap="round" />
+      <path d="M9 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4" />
+    </svg>
+  ),
+  deleteRoom: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16M10 11v6M14 11v6M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M10 17H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h4" />
@@ -75,7 +89,7 @@ const icons = {
   ),
 }
 
-export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: HamburgerMenuProps) {
+export function HamburgerMenu({ roomSlug, onArchiveRoom, onDeleteRoom, onLeaveRoom, trigger = 'icon' }: HamburgerMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -183,14 +197,35 @@ export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: Ham
                   <li>
                     <button
                       type="button"
-                      onClick={() => {
-                        onArchiveRoom()
-                        closeMenu()
-                      }}
+                      onClick={() => { onArchiveRoom(); closeMenu() }}
                       className={clsx(itemClass, 'text-on-surface-variant')}
                     >
                       <MenuRowIcon>{icons.archive}</MenuRowIcon>
                       <span>Arquivar sala</span>
+                    </button>
+                  </li>
+                ) : null}
+                {onLeaveRoom ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => { onLeaveRoom(); closeMenu() }}
+                      className={clsx(itemClass, 'text-error')}
+                    >
+                      <MenuRowIcon className="text-error">{icons.leave}</MenuRowIcon>
+                      <span>Sair da sala</span>
+                    </button>
+                  </li>
+                ) : null}
+                {onDeleteRoom ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => { onDeleteRoom(); closeMenu() }}
+                      className={clsx(itemClass, 'text-error')}
+                    >
+                      <MenuRowIcon className="text-error">{icons.deleteRoom}</MenuRowIcon>
+                      <span>Apagar sala</span>
                     </button>
                   </li>
                 ) : null}
