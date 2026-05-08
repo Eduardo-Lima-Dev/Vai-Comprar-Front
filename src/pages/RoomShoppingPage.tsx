@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
+import * as participantsApi from '../api/participants'
 import * as roomsApi from '../api/rooms'
 import * as shoppingApi from '../api/shopping'
 import { useAuth } from '../auth/AuthContext'
@@ -11,7 +12,7 @@ import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
 import { shoppingSessionStorageKey } from '../constants/storage'
-import type { Item, Room, ShoppingSession } from '../types/api'
+import type { Item, Room, RoomParticipant, ShoppingSession } from '../types/api'
 
 type Phase = 'setup' | 'active' | 'watching' | 'summary'
 
@@ -24,6 +25,7 @@ export function RoomShoppingPage() {
 
   const [room, setRoom] = useState<Room | null>(null)
   const [items, setItems] = useState<Item[]>([])
+  const [roomParticipants, setRoomParticipants] = useState<RoomParticipant[]>([])
   const [participantId, setParticipantId] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [phase, setPhase] = useState<Phase>('setup')
@@ -32,8 +34,8 @@ export function RoomShoppingPage() {
   const [loadingRoom, setLoadingRoom] = useState(true)
   const [watcherSession, setWatcherSession] = useState<ShoppingSession | null>(null)
 
-  const participants = room?.participants ?? []
-  const responsible = participants.find((p) => p.id === participantId)
+  const activeParticipants = roomParticipants.filter((p) => p.userId !== null)
+  const responsible = activeParticipants.find((p) => p.id === participantId)
   const shopperName = responsible?.name ?? user?.name ?? 'Participante'
 
   const pending = useMemo(() => items.filter((i) => i.status !== 'PURCHASED'), [items])
@@ -67,14 +69,22 @@ export function RoomShoppingPage() {
   async function loadAll() {
     if (!slug) return
     try {
-      const [r, list] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
-      const roomParticipants = Array.isArray(r.participants) ? r.participants : []
-      setRoom({ ...r, participants: roomParticipants })
+      const [r, list, fetchedParticipants] = await Promise.all([
+        roomsApi.getRoom(slug),
+        itemsApi.listItems(slug),
+        participantsApi.getParticipants(slug).catch(() => [] as RoomParticipant[]),
+      ])
+      setRoom(r)
       setItems(Array.isArray(list) ? list : [])
-      // Auto-seleciona o único participante disponível
+      const active = Array.isArray(fetchedParticipants)
+        ? fetchedParticipants.filter((p) => p.userId !== null)
+        : []
+      setRoomParticipants(Array.isArray(fetchedParticipants) ? fetchedParticipants : [])
       setParticipantId((prev) => {
         if (prev) return prev
-        return roomParticipants.length === 1 ? roomParticipants[0]!.id : ''
+        const mine = active.find((p) => p.userId === user?.id)
+        if (mine) return mine.id
+        return active.length === 1 ? active[0]!.id : ''
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao carregar sessão.')
@@ -121,7 +131,6 @@ export function RoomShoppingPage() {
     void init()
   }, [slug])
 
-  // Polling a cada 3s durante compra ativa ou modo observador
   useEffect(() => {
     if (phase !== 'active' && phase !== 'watching') return
     const interval = setInterval(() => void syncItems(), 3000)
@@ -233,7 +242,7 @@ export function RoomShoppingPage() {
               </label>
               {loadingRoom ? (
                 <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" />
-              ) : participants.length === 0 ? (
+              ) : activeParticipants.length === 0 ? (
                 <p className="mt-4 font-sans text-sm text-on-surface-variant">
                   Nenhum participante na sala ainda.{' '}
                   <button type="button" className="underline text-primary" onClick={() => navigate(`/rooms/${slug}`)}>
@@ -250,9 +259,9 @@ export function RoomShoppingPage() {
                   style={{ borderColor: 'var(--vc-card-border)' }}
                 >
                   <option value="">Selecione participante...</option>
-                  {participants.map((p) => (
+                  {activeParticipants.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.name}{p.userId === user?.id ? ' (você)' : ''}
                     </option>
                   ))}
                 </select>
@@ -260,7 +269,7 @@ export function RoomShoppingPage() {
             </div>
             <PrimaryButton
               type="submit"
-              disabled={busy || loadingRoom || participants.length === 0}
+              disabled={busy || loadingRoom || activeParticipants.length === 0}
               fullWidth
               className="uppercase tracking-[0.18em]"
             >
