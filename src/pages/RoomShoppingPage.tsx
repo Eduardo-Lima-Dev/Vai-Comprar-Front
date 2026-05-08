@@ -66,8 +66,8 @@ export function RoomShoppingPage() {
     else sessionStorage.setItem(sessKey(), JSON.stringify(data))
   }
 
-  async function loadAll(): Promise<string> {
-    if (!slug) return ''
+  async function loadAll(): Promise<{ participantId: string | undefined; canStart: boolean }> {
+    if (!slug) return { participantId: undefined, canStart: false }
     const [r, list, fetchedParticipants] = await Promise.all([
       roomsApi.getRoom(slug),
       itemsApi.listItems(slug),
@@ -76,12 +76,25 @@ export function RoomShoppingPage() {
     setRoom(r)
     setItems(Array.isArray(list) ? list : [])
     const allFetched = Array.isArray(fetchedParticipants) ? fetchedParticipants : []
-    const active = allFetched.filter((p) => p.userId !== null && p.role === 'PARTICIPANT')
     setRoomParticipants(allFetched)
-    const mine = active.find((p) => p.userId === user?.id)
-    const autoId = mine?.id ?? (active.length === 1 ? active[0]!.id : '')
-    setParticipantId(autoId)
-    return autoId
+
+    // Usuário logado encontrado na sala (qualquer role)
+    const myEntry = allFetched.find((p) => p.userId === user?.id)
+    if (myEntry) {
+      // PARTICIPANT → envia o ID do registro; CREATOR → inicia sem participantId (opcional no backend)
+      const pid = myEntry.role === 'PARTICIPANT' ? myEntry.id : undefined
+      setParticipantId(pid ?? '')
+      return { participantId: pid, canStart: true }
+    }
+
+    // Fallback: único participante ativo (usuário sem conta vinculada)
+    const activeParts = allFetched.filter((p) => p.userId !== null && p.role === 'PARTICIPANT')
+    if (activeParts.length === 1) {
+      setParticipantId(activeParts[0]!.id)
+      return { participantId: activeParts[0]!.id, canStart: true }
+    }
+
+    return { participantId: undefined, canStart: false }
   }
 
   async function syncItems() {
@@ -100,7 +113,7 @@ export function RoomShoppingPage() {
 
     async function init() {
       try {
-        const [autoParticipantId, activeSession] = await Promise.all([
+        const [{ participantId: autoParticipantId, canStart }, activeSession] = await Promise.all([
           loadAll(),
           shoppingApi.getActiveSession(slug).catch(() => null),
         ])
@@ -120,10 +133,11 @@ export function RoomShoppingPage() {
           return
         }
 
-        if (autoParticipantId) {
-          const session = await shoppingApi.startShopping(slug, { participantId: autoParticipantId })
+        if (canStart) {
+          const input = autoParticipantId ? { participantId: autoParticipantId } : {}
+          const session = await shoppingApi.startShopping(slug, input)
           setSessionId(session.id)
-          writeStored({ sessionId: session.id, participantId: autoParticipantId })
+          writeStored({ sessionId: session.id, participantId: autoParticipantId ?? '' })
           setPhase('active')
           await syncItems()
           return

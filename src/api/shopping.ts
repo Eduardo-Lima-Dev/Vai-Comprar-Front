@@ -2,7 +2,7 @@ import { apiClient } from './client'
 import type { Purchase, ShoppingSession } from '../types/api'
 
 type StartShoppingInput = {
-  participantId: string
+  participantId?: string
 }
 
 type FinishShoppingInput = {
