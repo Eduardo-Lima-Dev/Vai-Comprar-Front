@@ -28,8 +28,12 @@ export type Room = {
   id: string
   name: string
   slug: string
+  createdById?: string
   plannedDate: string | null
   archivedAt?: string | null
+  lastAccessedAt?: string | null
+  createdAt?: string
+  updatedAt?: string
   participants?: Participant[]
 }
 

@@ -7,7 +7,6 @@ import { HamburgerMenu } from '../components/HamburgerMenu'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 
 export function AccessRoomPage() {
   const navigate = useNavigate()
@@ -42,7 +41,7 @@ export function AccessRoomPage() {
     setLoading(true)
     try {
       await roomsApi.getRoom(normalized)
-      localStorage.setItem(LAST_ROOM_SLUG_KEY, normalized)
+      void roomsApi.touchRoom(normalized).catch(() => null)
       navigate(`/rooms/${normalized}`)
     } catch {
       toast.error('Slug ou link inválido (ou sem acesso para esta conta).')

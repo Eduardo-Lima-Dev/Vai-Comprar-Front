@@ -8,7 +8,6 @@ import { Chip } from '../components/design/Chip'
 import { IconSelectField } from '../components/design/IconSelectField'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 import { CATEGORY_LABELS } from '../lib/categories'
 import type { ItemCategory } from '../types/api'
 
@@ -39,8 +38,7 @@ export function AddItemPage() {
 
   useEffect(() => {
     if (!slug) return
-    localStorage.setItem(LAST_ROOM_SLUG_KEY, slug)
-    void roomsApi.getRoom(slug).catch(() => null)
+    void roomsApi.touchRoom(slug).catch(() => null)
   }, [slug])
 
   async function handleSubmit(event: FormEvent) {

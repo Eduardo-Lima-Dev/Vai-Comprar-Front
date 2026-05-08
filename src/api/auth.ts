@@ -24,6 +24,10 @@ export function getMe() {
   return apiClient.get<unknown>('/auth/me').then(normalizeUserPayload)
 }
 
+export function getProfile() {
+  return apiClient.get<unknown>('/auth/profile').then(normalizeUserPayload)
+}
+
 function normalizeAuthResponse(payload: unknown): AuthResponse {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Resposta de autenticacao invalida.')

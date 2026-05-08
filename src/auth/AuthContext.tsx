@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import * as authApi from '../api/auth'
 import { clearSessionToken, getSessionToken, setSessionToken } from '../lib/session'
+import { roomsCacheKey } from '../constants/storage'
 import type { User } from '../types/api'
 
 type AuthContextValue = {
@@ -59,8 +60,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function logout() {
+    const currentUser = user
     clearSessionToken()
     setUser(null)
+    if (currentUser) {
+      localStorage.removeItem(roomsCacheKey(currentUser.id))
+    }
   }
 
   const value = useMemo<AuthContextValue>(

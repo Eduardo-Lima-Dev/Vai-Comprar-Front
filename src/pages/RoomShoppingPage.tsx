@@ -10,7 +10,7 @@ import { HamburgerMenu } from '../components/HamburgerMenu'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
-import { LAST_ROOM_SLUG_KEY, shoppingSessionStorageKey } from '../constants/storage'
+import { shoppingSessionStorageKey } from '../constants/storage'
 import type { Item, Room } from '../types/api'
 
 type Phase = 'setup' | 'active' | 'summary'
@@ -66,7 +66,6 @@ export function RoomShoppingPage() {
     if (!slug) return
     try {
       const [r, list] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
-      localStorage.setItem(LAST_ROOM_SLUG_KEY, slug)
       setRoom({ ...r, participants: Array.isArray(r.participants) ? r.participants : [] })
       setItems(Array.isArray(list) ? list : [])
     } catch (err) {
@@ -86,6 +85,7 @@ export function RoomShoppingPage() {
 
   useEffect(() => {
     void loadAll()
+    if (slug) void roomsApi.touchRoom(slug).catch(() => null)
     const saved = readStored()
     if (saved) {
       setSessionId(saved.sessionId)

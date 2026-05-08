@@ -6,7 +6,6 @@ import * as roomsApi from '../api/rooms'
 import { HamburgerMenu } from '../components/HamburgerMenu'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 import type { Purchase, PurchaseDetail, Room } from '../types/api'
 
 export function RoomHistoryPage() {
@@ -23,7 +22,6 @@ export function RoomHistoryPage() {
     if (!slug) return
     try {
       const [roomData, purchasesData] = await Promise.all([roomsApi.getRoom(slug), purchasesApi.listPurchases(slug)])
-      localStorage.setItem(LAST_ROOM_SLUG_KEY, slug)
       setRoom(roomData)
       setPurchases(Array.isArray(purchasesData) ? purchasesData : [])
     } catch (err) {

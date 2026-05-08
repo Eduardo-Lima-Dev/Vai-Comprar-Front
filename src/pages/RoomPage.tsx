@@ -12,7 +12,6 @@ import { ConfirmDialog } from '../components/design/ConfirmDialog'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 import { CATEGORY_LABELS, ROOM_FILTER_CATEGORIES } from '../lib/categories'
 import { formatPlannedDateRaw, parseDateInputToIso, toDateInputValue } from '../lib/format'
 import type { Item, ItemCategory, ItemStatus, Participant, Room } from '../types/api'
@@ -105,14 +104,12 @@ export function RoomPage() {
     if (!slug) return
     try {
       const [room, items] = await Promise.all([roomsApi.getRoom(slug), itemsApi.listItems(slug)])
-      localStorage.setItem(LAST_ROOM_SLUG_KEY, slug)
       setState({
         room: { ...room, participants: Array.isArray(room.participants) ? room.participants : [] },
         items: Array.isArray(items) ? items : [],
       })
     } catch (err) {
       if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
-        localStorage.removeItem(LAST_ROOM_SLUG_KEY)
         toast.warning('Você não tem acesso a esta sala nesta conta. Entre por um slug válido.')
         navigate('/rooms/access', { replace: true })
         return
@@ -125,6 +122,10 @@ export function RoomPage() {
     void loadRoomData()
     const interval = setInterval(() => void loadRoomData(), 10000)
     return () => clearInterval(interval)
+  }, [slug])
+
+  useEffect(() => {
+    if (slug) void roomsApi.touchRoom(slug).catch(() => null)
   }, [slug])
 
   useEffect(() => {

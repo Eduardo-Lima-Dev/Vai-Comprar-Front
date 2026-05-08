@@ -6,7 +6,6 @@ import * as roomsApi from '../api/rooms'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
 import { UnderlineField } from '../components/design/UnderlineField'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 import { formatPlannedDateRaw, parseDateInputToIso, slugifyPreview } from '../lib/format'
 
 const todayInput = (): string => {
@@ -32,7 +31,7 @@ export function CreateRoomPage() {
         name: name.trim(),
         plannedDate: iso,
       })
-      localStorage.setItem(LAST_ROOM_SLUG_KEY, room.slug)
+      void roomsApi.touchRoom(room.slug).catch(() => null)
       const roomPath = `/rooms/${room.slug}`
       const roomUrl = `${window.location.origin}${roomPath}`
       try {

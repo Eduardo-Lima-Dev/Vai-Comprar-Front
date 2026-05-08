@@ -23,3 +23,11 @@ export function updateRoom(slug: string, input: UpdateRoomInput) {
 export function archiveRoom(slug: string) {
   return apiClient.post<Room>(`/rooms/${slug}/archive`)
 }
+
+export function listRooms() {
+  return apiClient.get<Room[]>('/rooms')
+}
+
+export function touchRoom(slug: string) {
+  return apiClient.post<Room>(`/rooms/${slug}/touch`)
+}

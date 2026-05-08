@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 
 type HamburgerMenuProps = {
   roomSlug?: string
@@ -79,7 +78,6 @@ const icons = {
 export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: HamburgerMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
-  const lastRoomSlug = roomSlug ?? (typeof window !== 'undefined' ? localStorage.getItem(LAST_ROOM_SLUG_KEY) ?? undefined : undefined)
 
   function closeMenu() {
     setIsOpen(false)
@@ -159,22 +157,22 @@ export function HamburgerMenu({ roomSlug, onArchiveRoom, trigger = 'icon' }: Ham
                     <span>Entrar por URL</span>
                   </Link>
                 </li>
-                {lastRoomSlug ? (
+                {roomSlug ? (
                   <>
                     <li>
-                      <Link to={`/rooms/${lastRoomSlug}`} onClick={closeMenu} className={itemClass}>
+                      <Link to={`/rooms/${roomSlug}`} onClick={closeMenu} className={itemClass}>
                         <MenuRowIcon>{icons.room}</MenuRowIcon>
                         <span>Sala atual</span>
                       </Link>
                     </li>
                     <li>
-                      <Link to={`/rooms/${lastRoomSlug}/shopping`} onClick={closeMenu} className={itemClass}>
+                      <Link to={`/rooms/${roomSlug}/shopping`} onClick={closeMenu} className={itemClass}>
                         <MenuRowIcon>{icons.shopping}</MenuRowIcon>
                         <span>Compra em andamento</span>
                       </Link>
                     </li>
                     <li>
-                      <Link to={`/rooms/${lastRoomSlug}/history`} onClick={closeMenu} className={itemClass}>
+                      <Link to={`/rooms/${roomSlug}/history`} onClick={closeMenu} className={itemClass}>
                         <MenuRowIcon>{icons.history}</MenuRowIcon>
                         <span>Histórico</span>
                       </Link>

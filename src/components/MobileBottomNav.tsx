@@ -2,7 +2,6 @@ import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { LAST_ROOM_SLUG_KEY } from '../constants/storage'
 
 type TabId = 'home' | 'rooms' | 'activity' | 'profile'
 
@@ -43,11 +42,6 @@ function NavIconProfile({ active }: { active: boolean }) {
   )
 }
 
-function getLastSlug(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(LAST_ROOM_SLUG_KEY)
-}
-
 function isRoomsLikePath(pathname: string): boolean {
   if (pathname === '/rooms/new' || pathname === '/rooms/access') return true
   const match = /^\/rooms\/([^/]+)/.exec(pathname)
@@ -71,24 +65,30 @@ export function MobileBottomNav() {
     return false
   }
 
+  function getCurrentSlug(): string | null {
+    const match = /^\/rooms\/([^/]+)/.exec(pathname)
+    const slug = match?.[1]
+    if (!slug || slug === 'new' || slug === 'access') return null
+    return slug
+  }
+
   function handleRooms() {
-    const slug = getLastSlug()
+    const slug = getCurrentSlug()
     if (slug) {
       navigate(`/rooms/${slug}`)
       return
     }
-    toast.info('Escolha ou abra uma sala para continuar.')
-    navigate('/rooms/access')
+    navigate('/')
   }
 
   function handleActivity() {
-    const slug = getLastSlug()
+    const slug = getCurrentSlug()
     if (slug) {
       navigate(`/rooms/${slug}/history`)
       return
     }
-    toast.warning('Abra ou entre numa sala para ver atividades.')
-    navigate('/rooms/access')
+    toast.info('Abra uma sala para ver o histórico.')
+    navigate('/')
   }
 
   const items: { id: TabId; label: string; icon: (a: boolean) => ReactNode; onClick: () => void }[] = [
