@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -8,6 +8,7 @@ import { HamburgerMenu } from '../components/HamburgerMenu'
 import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
+import type { User } from '../types/api'
 
 function initialsFromName(name: string) {
   return name
@@ -17,21 +18,39 @@ function initialsFromName(name: string) {
     .join('')
 }
 
+function formatDate(iso: string | undefined) {
+  if (!iso) return '—'
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(iso))
+}
+
 export function ProfilePage() {
   const navigate = useNavigate()
-  const { user, logout, updateUser } = useAuth()
+  const { user: ctxUser, logout, updateUser } = useAuth()
+  const [profile, setProfile] = useState<User | null>(ctxUser)
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
   const [isEditing, setIsEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [emailDraft, setEmailDraft] = useState('')
+  const [passwordDraft, setPasswordDraft] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const name = user?.name ?? 'Usuário'
-  const email = user?.email ?? ''
-  const initials = initialsFromName(name)
+  const name = profile?.name ?? ctxUser?.name ?? 'Usuário'
+  const email = profile?.email ?? ctxUser?.email ?? ''
+
+  useEffect(() => {
+    authApi.getProfile()
+      .then((p) => { setProfile(p); updateUser(p) })
+      .catch(() => { /* usa dados do contexto */ })
+      .finally(() => setLoadingProfile(false))
+  }, [])
 
   function handleStartEdit() {
     setNameDraft(name)
     setEmailDraft(email)
+    setPasswordDraft('')
+    setPasswordConfirm('')
     setIsEditing(true)
   }
 
@@ -41,12 +60,19 @@ export function ProfilePage() {
       toast.warning('O nome não pode ficar em branco.')
       return
     }
+    if (passwordDraft && passwordDraft !== passwordConfirm) {
+      toast.warning('As senhas não coincidem.')
+      return
+    }
     setBusy(true)
     try {
-      const updated = await authApi.updateProfile({
+      const input: Parameters<typeof authApi.updateProfile>[0] = {
         name: nameDraft.trim(),
         email: emailDraft.trim(),
-      })
+      }
+      if (passwordDraft) input.password = passwordDraft
+      const updated = await authApi.updateProfile(input)
+      setProfile(updated)
       updateUser(updated)
       setIsEditing(false)
       toast.success('Perfil atualizado.')
@@ -69,7 +95,7 @@ export function ProfilePage() {
         <HamburgerMenu />
       </header>
 
-      {/* Avatar + nome */}
+      {/* Avatar */}
       <div className="mb-8 flex flex-col items-center gap-4 py-4">
         <div
           className="flex h-24 w-24 items-center justify-center rounded-full border-2 text-2xl font-bold uppercase text-on-background"
@@ -78,7 +104,7 @@ export function ProfilePage() {
             backgroundImage: 'linear-gradient(135deg,var(--color-surface-container-high),var(--color-surface-container-lowest))',
           }}
         >
-          {initials}
+          {initialsFromName(name)}
         </div>
         <div className="text-center">
           <p className="font-display text-2xl text-on-background">{name}</p>
@@ -86,11 +112,13 @@ export function ProfilePage() {
         </div>
       </div>
 
-      {/* Informações */}
+      {/* Info / Edição */}
       {!isEditing ? (
         <SurfaceCard padding="lg" className="space-y-5">
           <div className="flex items-center justify-between">
-            <p className="tracking-label font-sans text-xs font-semibold uppercase text-on-surface-variant">Informações da conta</p>
+            <p className="tracking-label font-sans text-xs font-semibold uppercase text-on-surface-variant">
+              Informações da conta
+            </p>
             <button
               type="button"
               className="font-sans text-xs font-semibold uppercase text-primary underline-offset-2 hover:underline"
@@ -100,24 +128,42 @@ export function ProfilePage() {
             </button>
           </div>
 
-          <dl className="space-y-4">
-            <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
-              <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">Nome</dt>
-              <dd className="font-sans text-base text-on-background">{name}</dd>
+          {loadingProfile ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-container-high" />
+              ))}
             </div>
-            <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
-              <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">E-mail</dt>
-              <dd className="font-sans text-base text-on-background">{email || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">ID da conta</dt>
-              <dd className="break-all font-mono text-xs text-on-surface-variant">{user?.id ?? '—'}</dd>
-            </div>
-          </dl>
+          ) : (
+            <dl className="space-y-4">
+              <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
+                <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">Nome</dt>
+                <dd className="font-sans text-base text-on-background">{name}</dd>
+              </div>
+              <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
+                <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">E-mail</dt>
+                <dd className="font-sans text-base text-on-background">{email || '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
+                <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">Membro desde</dt>
+                <dd className="font-sans text-base text-on-background">{formatDate(profile?.createdAt)}</dd>
+              </div>
+              <div className="flex flex-col gap-1 border-b pb-4" style={{ borderColor: 'var(--vc-card-border)' }}>
+                <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">Última atualização</dt>
+                <dd className="font-sans text-base text-on-background">{formatDate(profile?.updatedAt)}</dd>
+              </div>
+              <div className="flex flex-col gap-1">
+                <dt className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">ID da conta</dt>
+                <dd className="break-all font-mono text-xs text-on-surface-variant">{profile?.id ?? '—'}</dd>
+              </div>
+            </dl>
+          )}
         </SurfaceCard>
       ) : (
         <SurfaceCard padding="lg">
-          <p className="tracking-label mb-5 font-sans text-xs font-semibold uppercase text-on-surface-variant">Editar informações</p>
+          <p className="tracking-label mb-5 font-sans text-xs font-semibold uppercase text-on-surface-variant">
+            Editar informações
+          </p>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="profile-name" className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">
@@ -133,6 +179,7 @@ export function ProfilePage() {
                 style={{ borderColor: 'var(--vc-card-border)' }}
               />
             </div>
+
             <div className="space-y-1.5">
               <label htmlFor="profile-email" className="font-sans text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant">
                 E-mail
@@ -147,6 +194,34 @@ export function ProfilePage() {
                 style={{ borderColor: 'var(--vc-card-border)' }}
               />
             </div>
+
+            <div className="border-t pt-4" style={{ borderColor: 'var(--vc-card-border)' }}>
+              <p className="tracking-label mb-3 font-sans text-xs font-semibold uppercase text-on-surface-variant">
+                Nova senha <span className="normal-case font-normal text-outline">(opcional)</span>
+              </p>
+              <div className="space-y-3">
+                <input
+                  id="profile-password"
+                  type="password"
+                  placeholder="Nova senha"
+                  value={passwordDraft}
+                  onChange={(e) => setPasswordDraft(e.target.value)}
+                  className="placeholder:text-on-surface-variant w-full rounded-lg border bg-surface-container-low px-4 py-3 font-sans text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/35"
+                  style={{ borderColor: 'var(--vc-card-border)' }}
+                />
+                {passwordDraft && (
+                  <input
+                    type="password"
+                    placeholder="Confirmar nova senha"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    className="placeholder:text-on-surface-variant w-full rounded-lg border bg-surface-container-low px-4 py-3 font-sans text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/35"
+                    style={{ borderColor: 'var(--vc-card-border)' }}
+                  />
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-3 pt-2">
               <PrimaryButton type="submit" disabled={busy} fullWidth className="!normal-case">
                 {busy ? 'Salvando…' : 'Salvar alterações'}
@@ -169,14 +244,18 @@ export function ProfilePage() {
         <OutlineGoldButton type="button" onClick={() => navigate('/')}>
           Ir para Home
         </OutlineGoldButton>
-        <PrimaryButton
+        <button
           type="button"
-          className="!normal-case !text-base font-semibold"
+          className="w-full rounded-full border px-6 py-3 font-sans text-sm font-semibold transition hover:opacity-90"
+          style={{
+            borderColor: 'rgba(220,80,80,0.35)',
+            background: 'rgba(180,60,60,0.12)',
+            color: '#f08080',
+          }}
           onClick={handleLogout}
-          style={{ background: 'rgba(180,60,60,0.18)', borderColor: 'rgba(220,80,80,0.35)', color: '#f08080' }}
         >
           Sair da conta
-        </PrimaryButton>
+        </button>
       </div>
     </main>
   )

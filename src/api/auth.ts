@@ -31,6 +31,7 @@ export function getProfile() {
 type UpdateProfileInput = {
   name?: string
   email?: string
+  password?: string
 }
 
 export function updateProfile(input: UpdateProfileInput) {
@@ -77,9 +78,8 @@ function normalizeUserPayload(payload: unknown): User {
   const name = String(userSource.name ?? userSource.fullName ?? userSource.username ?? '')
   const email = String(userSource.email ?? '')
 
-  return {
-    id,
-    name,
-    email,
-  }
+  const createdAt = typeof userSource.createdAt === 'string' ? userSource.createdAt : undefined
+  const updatedAt = typeof userSource.updatedAt === 'string' ? userSource.updatedAt : undefined
+
+  return { id, name, email, createdAt, updatedAt }
 }
