@@ -17,7 +17,7 @@ import { SurfaceCard } from '../components/design/SurfaceCard'
 import { roomsCacheKey } from '../constants/storage'
 import { CATEGORY_LABELS, ROOM_FILTER_CATEGORIES } from '../lib/categories'
 import { formatPlannedDateRaw, parseDateInputToIso, toDateInputValue } from '../lib/format'
-import type { Item, ItemCategory, ItemStatus, Participant, Room, ShoppingSession } from '../types/api'
+import type { Item, ItemCategory, ItemStatus, Participant, Room, RoomParticipant, ShoppingSession } from '../types/api'
 
 type RoomState = {
   room: Room | null
@@ -98,6 +98,7 @@ export function RoomPage() {
   const [roomActionPending, setRoomActionPending] = useState<'leave' | 'delete' | null>(null)
   const [roomActionBusy, setRoomActionBusy] = useState(false)
   const [activeSession, setActiveSession] = useState<ShoppingSession | null>(null)
+  const [roomParticipants, setRoomParticipants] = useState<RoomParticipant[]>([])
 
   const isCreator = Boolean(state.room && user?.id === state.room.createdById)
 
@@ -112,10 +113,11 @@ export function RoomPage() {
   async function loadRoomData() {
     if (!slug) return
     try {
-      const [room, items, session] = await Promise.all([
+      const [room, items, session, fetchedParticipants] = await Promise.all([
         roomsApi.getRoom(slug),
         itemsApi.listItems(slug),
         shoppingApi.getActiveSession(slug).catch(() => null),
+        participantsApi.getParticipants(slug).catch(() => [] as RoomParticipant[]),
       ])
       setState((prev) => ({
         room: {
@@ -126,6 +128,7 @@ export function RoomPage() {
         items: Array.isArray(items) ? items : [],
       }))
       setActiveSession(session)
+      setRoomParticipants(Array.isArray(fetchedParticipants) ? fetchedParticipants : [])
     } catch (err) {
       if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
         toast.warning('Você não tem acesso a esta sala nesta conta. Entre por um slug válido.')
@@ -316,7 +319,8 @@ export function RoomPage() {
   const hasMorePending = pendingTotal > pendingVisibleCount
   const nextChunk = Math.min(PENDING_PAGE_SIZE, pendingTotal - pendingVisibleCount)
 
-  const participantRing = participants.slice(0, 6)
+  const activeRoomParticipants = roomParticipants.filter((p) => p.userId !== null)
+  const participantRing = roomParticipants.slice(0, 6)
 
   const displayPlannedFormatted = plannedDraft ? formatPlannedDateRaw(parseDateInputToIso(plannedDraft)) : ''
 
@@ -350,12 +354,14 @@ export function RoomPage() {
               {participantRing.map((p) => (
                 <div
                   key={p.id}
-                  title={p.name}
-                  aria-label={p.name}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-background text-[11px] font-semibold uppercase text-on-background"
+                  title={p.userId === null ? `${p.name} (saiu da sala)` : p.name}
+                  aria-label={p.userId === null ? `${p.name} (saiu da sala)` : p.name}
+                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 text-[11px] font-semibold uppercase"
                   style={{
                     borderColor: 'var(--vc-card-border)',
                     backgroundImage: 'linear-gradient(135deg,var(--color-surface-container-high),var(--color-surface-container-lowest))',
+                    color: p.userId === null ? 'var(--color-on-surface-variant)' : 'var(--color-on-background)',
+                    opacity: p.userId === null ? 0.45 : 1,
                   }}
                 >
                   {initialsFromName(p.name)}
@@ -364,7 +370,7 @@ export function RoomPage() {
             </div>
             <div className="min-w-[10rem]">
               <p className="tracking-label mb-2 font-sans text-[0.7rem] font-semibold uppercase text-on-surface-variant">
-                Lista sincronizada • {participants.length} participantes
+                Lista sincronizada • {activeRoomParticipants.length} participantes
               </p>
               <span
                 className="inline-flex items-center gap-3 rounded-full border px-5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.25em]"

@@ -1,8 +1,12 @@
 import { apiClient } from './client'
-import type { Participant } from '../types/api'
+import type { Participant, RoomParticipant } from '../types/api'
 
 type AddParticipantInput = {
   name: string
+}
+
+export function getParticipants(slug: string) {
+  return apiClient.get<RoomParticipant[]>(`/rooms/${slug}/participants`)
 }
 
 export function addParticipant(slug: string, input: AddParticipantInput) {

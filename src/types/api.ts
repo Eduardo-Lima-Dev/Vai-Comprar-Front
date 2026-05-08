@@ -24,6 +24,14 @@ export type Participant = {
   name: string
 }
 
+export type RoomParticipant = {
+  id: string
+  userId: string | null
+  name: string
+  role: 'CREATOR' | 'PARTICIPANT'
+  joinedAt: string
+}
+
 export type Room = {
   id: string
   name: string
