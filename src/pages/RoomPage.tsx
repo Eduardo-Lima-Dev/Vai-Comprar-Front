@@ -17,7 +17,7 @@ import { SurfaceCard } from '../components/design/SurfaceCard'
 import { roomsCacheKey } from '../constants/storage'
 import { CATEGORY_LABELS, ROOM_FILTER_CATEGORIES } from '../lib/categories'
 import { formatPlannedDateRaw, parseDateInputToIso, toDateInputValue } from '../lib/format'
-import type { Item, ItemCategory, ItemStatus, Participant, Room, RoomParticipant, ShoppingSession } from '../types/api'
+import type { Item, ItemCategory, ItemStatus, Room, RoomParticipant, ShoppingSession } from '../types/api'
 
 type RoomState = {
   room: Room | null
@@ -86,7 +86,6 @@ export function RoomPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [state, setState] = useState<RoomState>({ room: null, items: [] })
-  const [newParticipantName, setNewParticipantName] = useState('')
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState<ItemCategory | null>(null)
   const [isDateSheetOpen, setIsDateSheetOpen] = useState(false)
@@ -104,7 +103,6 @@ export function RoomPage() {
 
   const pendingItems = useMemo(() => state.items.filter((item) => item.status !== 'PURCHASED'), [state.items])
   const purchasedItems = useMemo(() => state.items.filter((item) => item.status === 'PURCHASED'), [state.items])
-  const participants: Participant[] = state.room?.participants ?? []
 
   function getErrorMessage(err: unknown, fallback: string) {
     return err instanceof Error ? err.message : fallback
@@ -259,30 +257,6 @@ export function RoomPage() {
       toast.error(getErrorMessage(err, 'Erro ao remover item.'))
     } finally {
       setDeleteBusy(false)
-    }
-  }
-
-  async function handleAddParticipant(event: FormEvent) {
-    event.preventDefault()
-    if (!slug) return
-    try {
-      await participantsApi.addParticipant(slug, { name: newParticipantName })
-      setNewParticipantName('')
-      toast.success('Participante adicionado.')
-      await loadRoomData()
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Erro ao adicionar participante.'))
-    }
-  }
-
-  async function handleRemoveParticipant(participantId: string) {
-    if (!slug) return
-    try {
-      await participantsApi.removeParticipant(slug, participantId)
-      toast.success('Participante removido.')
-      await loadRoomData()
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Erro ao remover participante.'))
     }
   }
 
