@@ -545,40 +545,6 @@ export function RoomPage() {
             </ul>
           </SurfaceCard>
         ) : null}
-
-        <SurfaceCard className="space-y-6" padding="lg">
-          <div>
-            <h3 className="font-display text-lg leading-tight tracking-tight text-on-background">Participantes nesta sala</h3>
-            <p className="mt-2 font-sans text-sm text-on-surface-variant">Convites locais ficam sempre por aqui, prontos para evoluir com o backend mais tarde.</p>
-          </div>
-          <div className="space-y-3">
-            <form onSubmit={handleAddParticipant} className="flex flex-col gap-3 sm:flex-row">
-              <input
-                aria-label="Nome do participante"
-                className="placeholder:text-on-surface-variant font-sans flex-1 rounded-lg border bg-surface-container-low px-5 py-2.5 outline-none focus:ring-2 focus:ring-primary/35"
-                style={{ borderColor: 'var(--vc-card-border)' }}
-                value={newParticipantName}
-                onChange={(e) => setNewParticipantName(e.target.value)}
-                placeholder="Nome do participante"
-                required
-              />
-              <PrimaryButton type="submit" className="!normal-case sm:w-auto">
-                Adicionar
-              </PrimaryButton>
-            </form>
-            <ul className="space-y-3">
-              {participants.map((p) => (
-                <li key={p.id} className="flex flex-wrap gap-6 rounded-xl border px-6 py-3 font-sans" style={{ borderColor: 'var(--vc-card-border)' }}>
-                  <span className="text-on-background">{p.name}</span>
-                  <button type="button" className="ms-auto text-[11px] font-semibold uppercase text-error underline-offset-2 hover:underline" onClick={() => void handleRemoveParticipant(p.id)}>
-                    Remover
-                  </button>
-                </li>
-              ))}
-              {!participants.length ? <li className="font-sans text-sm italic text-outline">Ainda não há convidados adicionados.</li> : null}
-            </ul>
-          </div>
-        </SurfaceCard>
       </section>
 
       <div className="fixed inset-x-0 bottom-[5.85rem] z-30 px-[var(--spacing-margin-edge)]">

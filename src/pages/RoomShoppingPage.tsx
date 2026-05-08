@@ -23,7 +23,7 @@ export function RoomShoppingPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [room, setRoom] = useState<Room | null>(null)
+  const [_, setRoom] = useState<Room | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [roomParticipants, setRoomParticipants] = useState<RoomParticipant[]>([])
   const [participantId, setParticipantId] = useState('')
