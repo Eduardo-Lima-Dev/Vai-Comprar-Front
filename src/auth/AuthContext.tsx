@@ -12,6 +12,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
+  updateUser: (updated: User) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -59,6 +60,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setUser(me)
   }
 
+  function updateUser(updated: User) {
+    setUser(updated)
+  }
+
   function logout() {
     const currentUser = user
     clearSessionToken()
@@ -76,6 +81,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       register,
       logout,
+      updateUser,
     }),
     [isLoading, user],
   )

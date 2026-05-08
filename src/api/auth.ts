@@ -28,6 +28,15 @@ export function getProfile() {
   return apiClient.get<unknown>('/auth/profile').then(normalizeUserPayload)
 }
 
+type UpdateProfileInput = {
+  name?: string
+  email?: string
+}
+
+export function updateProfile(input: UpdateProfileInput) {
+  return apiClient.patch<unknown>('/auth/profile', input).then(normalizeUserPayload)
+}
+
 function normalizeAuthResponse(payload: unknown): AuthResponse {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Resposta de autenticacao invalida.')
