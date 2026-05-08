@@ -34,7 +34,7 @@ export function RoomShoppingPage() {
   const [loadingRoom, setLoadingRoom] = useState(true)
   const [watcherSession, setWatcherSession] = useState<ShoppingSession | null>(null)
 
-  const activeParticipants = roomParticipants.filter((p) => p.userId !== null)
+  const activeParticipants = roomParticipants.filter((p) => p.userId !== null && p.role === 'PARTICIPANT')
   const responsible = activeParticipants.find((p) => p.id === participantId)
   const shopperName = responsible?.name ?? user?.name ?? 'Participante'
 
@@ -175,15 +175,36 @@ export function RoomShoppingPage() {
     navigate(`/rooms/${slug}`)
   }
 
-  function cancelActive() {
+  async function cancelActive() {
     if (!sessionId) {
       exitFlow()
       return
     }
-    if (!window.confirm('Encerrar esta sessão de compra neste aparelho?')) return
-    writeStored(null)
-    toast.info('Sessão encerrada localmente.')
-    exitFlow()
+    if (!window.confirm('Cancelar e abandonar esta compra? Os itens voltarão para pendente.')) return
+    setBusy(true)
+    try {
+      await shoppingApi.cancelShopping(slug, sessionId)
+      writeStored(null)
+      toast.info('Compra cancelada.')
+      exitFlow()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao cancelar compra.')
+      setBusy(false)
+    }
+  }
+
+  async function cancelWatcher() {
+    if (!watcherSession) return
+    if (!window.confirm('Cancelar a compra em andamento? Os itens voltarão para pendente.')) return
+    setBusy(true)
+    try {
+      await shoppingApi.cancelShopping(slug, watcherSession.id)
+      toast.info('Compra cancelada.')
+      navigate(`/rooms/${slug}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao cancelar compra.')
+      setBusy(false)
+    }
   }
 
   async function confirmFinish(event: FormEvent) {
@@ -366,9 +387,12 @@ export function RoomShoppingPage() {
             </section>
           )}
 
-          <div className="pb-28">
+          <div className="grid grid-cols-2 gap-3 pb-28">
             <OutlineGoldButton type="button" fullWidth className="!normal-case py-4" onClick={() => navigate(`/rooms/${slug}`)}>
               Voltar para a sala
+            </OutlineGoldButton>
+            <OutlineGoldButton type="button" fullWidth className="!normal-case py-4 !border-error !text-error hover:!bg-error/10" disabled={busy} onClick={() => void cancelWatcher()}>
+              {busy ? 'Cancelando…' : 'Cancelar compra'}
             </OutlineGoldButton>
           </div>
         </div>
@@ -470,7 +494,7 @@ export function RoomShoppingPage() {
               </section>
 
               <div className="grid grid-cols-2 gap-3 pb-28">
-                <OutlineGoldButton type="button" className="py-4 !normal-case uppercase" onClick={cancelActive}>
+                <OutlineGoldButton type="button" className="py-4 !normal-case uppercase" disabled={busy} onClick={() => void cancelActive()}>
                   Cancelar
                 </OutlineGoldButton>
                 <PrimaryButton type="button" className="py-4 !normal-case uppercase" disabled={busy} onClick={() => setPhase('summary')}>

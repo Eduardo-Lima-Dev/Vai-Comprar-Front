@@ -21,3 +21,7 @@ export function finishShopping(slug: string, sessionId: string, input: FinishSho
 export function getActiveSession(slug: string) {
   return apiClient.get<ShoppingSession | null>(`/rooms/${slug}/shopping/active`)
 }
+
+export function cancelShopping(slug: string, sessionId: string) {
+  return apiClient.delete<{ success: boolean }>(`/rooms/${slug}/shopping/${sessionId}`)
+}
