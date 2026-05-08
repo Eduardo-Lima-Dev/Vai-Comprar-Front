@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import * as itemsApi from '../api/items'
@@ -12,9 +11,9 @@ import { OutlineGoldButton } from '../components/design/OutlineGoldButton'
 import { PrimaryButton } from '../components/design/PrimaryButton'
 import { SurfaceCard } from '../components/design/SurfaceCard'
 import { shoppingSessionStorageKey } from '../constants/storage'
-import type { Item, Room, RoomParticipant, ShoppingSession } from '../types/api'
+import type { Item, RoomParticipant, ShoppingSession } from '../types/api'
 
-type Phase = 'setup' | 'active' | 'watching' | 'summary'
+type Phase = 'active' | 'watching' | 'summary'
 
 type PersistedSession = { sessionId: string; participantId: string }
 
@@ -23,19 +22,16 @@ export function RoomShoppingPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [_, setRoom] = useState<Room | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [roomParticipants, setRoomParticipants] = useState<RoomParticipant[]>([])
   const [participantId, setParticipantId] = useState('')
   const [sessionId, setSessionId] = useState('')
-  const [phase, setPhase] = useState<Phase>('setup')
+  const [phase, setPhase] = useState<Phase>('watching')
   const [totalAmount, setTotalAmount] = useState('')
   const [busy, setBusy] = useState(false)
-  const [loadingRoom, setLoadingRoom] = useState(true)
   const [watcherSession, setWatcherSession] = useState<ShoppingSession | null>(null)
 
-  const activeParticipants = roomParticipants.filter((p) => p.userId !== null && p.role === 'PARTICIPANT')
-  const responsible = activeParticipants.find((p) => p.id === participantId)
+  const responsible = roomParticipants.find((p) => p.id === participantId)
   const shopperName = responsible?.name ?? user?.name ?? 'Participante'
 
   const pending = useMemo(() => items.filter((i) => i.status !== 'PURCHASED'), [items])
@@ -68,12 +64,11 @@ export function RoomShoppingPage() {
 
   async function loadAll(): Promise<{ participantId: string | undefined; canStart: boolean }> {
     if (!slug) return { participantId: undefined, canStart: false }
-    const [r, list, fetchedParticipants] = await Promise.all([
+    const [, list, fetchedParticipants] = await Promise.all([
       roomsApi.getRoom(slug),
       itemsApi.listItems(slug),
       participantsApi.getParticipants(slug).catch(() => [] as RoomParticipant[]),
     ])
-    setRoom(r)
     setItems(Array.isArray(list) ? list : [])
     const allFetched = Array.isArray(fetchedParticipants) ? fetchedParticipants : []
     setRoomParticipants(allFetched)
@@ -109,7 +104,6 @@ export function RoomShoppingPage() {
 
   useEffect(() => {
     if (!slug) return
-    setLoadingRoom(true)
 
     async function init() {
       try {
@@ -143,12 +137,11 @@ export function RoomShoppingPage() {
           return
         }
 
-        setPhase('setup')
+        toast.error('Você não é participante desta sala.')
+        navigate(`/rooms/${slug}`, { replace: true })
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Erro ao iniciar compra.')
-        setPhase('setup')
-      } finally {
-        setLoadingRoom(false)
+        navigate(`/rooms/${slug}`, { replace: true })
       }
     }
 
@@ -160,27 +153,6 @@ export function RoomShoppingPage() {
     const interval = setInterval(() => void syncItems(), 3000)
     return () => clearInterval(interval)
   }, [phase, slug])
-
-  async function start(event: FormEvent) {
-    event.preventDefault()
-    if (!slug || !participantId) {
-      toast.warning('Selecione o participante responsável.')
-      return
-    }
-    setBusy(true)
-    try {
-      const session = await shoppingApi.startShopping(slug, { participantId })
-      setSessionId(session.id)
-      writeStored({ sessionId: session.id, participantId })
-      setPhase('active')
-      toast.success('Compra iniciada.')
-      await syncItems()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao iniciar.')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function toggleItem(id: string, buy: boolean) {
     if (!slug) return
@@ -195,7 +167,6 @@ export function RoomShoppingPage() {
   function exitFlow() {
     writeStored(null)
     setSessionId('')
-    setPhase('setup')
     navigate(`/rooms/${slug}`)
   }
 
@@ -231,9 +202,9 @@ export function RoomShoppingPage() {
     }
   }
 
-  async function confirmFinish(event: FormEvent) {
+  async function confirmFinish(event: React.FormEvent) {
     event.preventDefault()
-    if (!slug || !sessionId || !participantId) {
+    if (!slug || !sessionId) {
       toast.error('Sessão inválida.')
       return
     }
@@ -256,7 +227,6 @@ export function RoomShoppingPage() {
   }
 
   const headerTitle =
-    phase === 'setup' ? 'Preparar compra' :
     phase === 'active' ? 'Compra em andamento' :
     phase === 'watching' ? 'Acompanhar compra' :
     'Finalizar compra'
@@ -269,60 +239,12 @@ export function RoomShoppingPage() {
 
       <h1 className="font-display text-[1.85rem] text-on-background">{headerTitle}</h1>
       <p className="mt-3 font-sans text-sm text-on-surface-variant">
-        {phase === 'setup'
-          ? 'Escolha quem fará as compras fisicamente e inicie o fluxo dedicado.'
-          : phase === 'active'
-            ? 'Marque os itens conforme forem colocados no carrinho.'
-            : phase === 'watching'
-              ? 'Você está assistindo a compra em tempo real.'
-              : 'Revise o resumo e confirme o valor total para registrar no histórico.'}
+        {phase === 'active'
+          ? 'Marque os itens conforme forem colocados no carrinho.'
+          : phase === 'watching'
+            ? 'Você está assistindo a compra em tempo real.'
+            : 'Revise o resumo e confirme o valor total para registrar no histórico.'}
       </p>
-
-      {phase === 'setup' && (
-        <SurfaceCard className="mt-10" padding="lg">
-          <form onSubmit={start} className="space-y-8">
-            <div>
-              <label htmlFor="shopper" className="tracking-label text-xs font-semibold uppercase text-primary-container">
-                Responsável
-              </label>
-              {loadingRoom ? (
-                <div className="mt-4 h-12 animate-pulse rounded-xl bg-surface-container-high" />
-              ) : activeParticipants.length === 0 ? (
-                <p className="mt-4 font-sans text-sm text-on-surface-variant">
-                  Nenhum participante na sala ainda.{' '}
-                  <button type="button" className="underline text-primary" onClick={() => navigate(`/rooms/${slug}`)}>
-                    Adicione participantes primeiro.
-                  </button>
-                </p>
-              ) : (
-                <select
-                  id="shopper"
-                  required
-                  value={participantId}
-                  onChange={(e) => setParticipantId(e.target.value)}
-                  className="mt-4 w-full rounded-xl border bg-surface-container-lowest px-4 py-3 font-sans text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
-                  style={{ borderColor: 'var(--vc-card-border)' }}
-                >
-                  <option value="">Selecione participante...</option>
-                  {activeParticipants.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}{p.userId === user?.id ? ' (você)' : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <PrimaryButton
-              type="submit"
-              disabled={busy || loadingRoom || activeParticipants.length === 0}
-              fullWidth
-              className="uppercase tracking-[0.18em]"
-            >
-              {busy ? 'Iniciando…' : 'Estou indo comprar'}
-            </PrimaryButton>
-          </form>
-        </SurfaceCard>
-      )}
 
       {phase === 'watching' && (
         <div className="mt-10 space-y-10">

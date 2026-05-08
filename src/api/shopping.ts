@@ -7,7 +7,7 @@ type StartShoppingInput = {
 
 type FinishShoppingInput = {
   totalAmount: number
-  participantId: string
+  participantId?: string
 }
 
 export function startShopping(slug: string, input: StartShoppingInput) {
